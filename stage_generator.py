@@ -1,6 +1,6 @@
 """Stage generator for tag game.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Iterable
 import numpy as np
 
 Cell = int
@@ -69,18 +69,45 @@ def widen_paths(stage: Stage, width_range: Tuple[int, int], rng: np.random.Gener
                             stage[ny][nx] = 0
     return stage
 
+def _neighbors(x: int, y: int) -> Iterable[Tuple[int, int]]:
+    """Yield 4-neighborhood coordinates."""
+    yield x + 1, y
+    yield x - 1, y
+    yield x, y + 1
+    yield x, y - 1
+
+def is_stage_connected(stage: Stage) -> bool:
+    """Return True if all open cells are mutually reachable."""
+    h, w = len(stage), len(stage[0])
+    start = (1, 1)
+    if stage[start[1]][start[0]] == 1:
+        return False
+    stack = [start]
+    visited = {start}
+    while stack:
+        x, y = stack.pop()
+        for nx, ny in _neighbors(x, y):
+            if 0 <= nx < w and 0 <= ny < h and stage[ny][nx] == 0 and (nx, ny) not in visited:
+                visited.add((nx, ny))
+                stack.append((nx, ny))
+    open_cells = sum(row.count(0) for row in stage)
+    return len(visited) == open_cells
+
 def add_random_walls(stage: Stage, prob: float, rng: np.random.Generator) -> Stage:
-    """Randomly convert path cells back into walls."""
+    """Randomly convert path cells back into walls while keeping connectivity."""
     if prob <= 0:
         return stage
     h, w = len(stage), len(stage[0])
-    for y in range(1, h-1):
-        for x in range(1, w-1):
-            if stage[y][x] == 0 and rng.random() < prob:
-                stage[y][x] = 1
+    cells = [(x, y) for y in range(1, h - 1) for x in range(1, w - 1) if stage[y][x] == 0]
+    for idx in rng.permutation(len(cells)):
+        x, y = cells[int(idx)]
+        if rng.random() < prob:
+            stage[y][x] = 1
+            if not is_stage_connected(stage):
+                stage[y][x] = 0
     # ensure start and goal remain open
     stage[1][1] = 0
-    stage[h-2][w-2] = 0
+    stage[h - 2][w - 2] = 0
     return stage
 
 def generate_stage(
@@ -98,6 +125,7 @@ def generate_stage(
     stage = remove_dead_ends(stage, rng)
     stage = widen_paths(stage, path_width, rng)
     stage = add_random_walls(stage, extra_wall_prob, rng)
+    stage = remove_dead_ends(stage, rng)
     return stage
 
 def print_stage(stage: Stage) -> None:
