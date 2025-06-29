@@ -14,7 +14,7 @@ from tag_game import StageMap, Agent, CELL_SIZE
 
 
 class TagEnv(gym.Env):
-    metadata = {"render.modes": ["human"]}
+    metadata = {"render_modes": ["human"]}
 
     def __init__(self, width: int = 31, height: int = 21, max_steps: int = 500):
         super().__init__()
@@ -54,10 +54,11 @@ class TagEnv(gym.Env):
         self.nige.update(self.stage)
 
         obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
-        done = self.oni.collides_with(self.nige) or self.step_count >= self.max_steps
-        reward = 1.0 if self.oni.collides_with(self.nige) else -0.01
+        terminated = self.oni.collides_with(self.nige)
+        truncated = self.step_count >= self.max_steps
+        reward = 1.0 if terminated else -0.01
         info = {}
-        return obs, reward, done, info
+        return obs, reward, terminated, truncated, info
 
     def render(self):
         if self.screen is None:
