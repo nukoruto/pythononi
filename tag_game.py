@@ -1,10 +1,10 @@
 import math
-import random
 from typing import Tuple, List
 
 import pygame
 
 from stage_generator import generate_stage, Stage
+import numpy as np
 
 
 CELL_SIZE = 20
@@ -13,8 +13,9 @@ FOV_DIST = 5
 
 
 class StageMap:
-    def __init__(self, width: int, height: int):
-        self.grid = generate_stage(width, height)
+    def __init__(self, width: int, height: int, rng: np.random.Generator | None = None):
+        self.rng = rng or np.random.default_rng()
+        self.grid = generate_stage(width, height, rng=self.rng)
         self.width = width
         self.height = height
 

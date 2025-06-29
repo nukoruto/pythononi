@@ -35,8 +35,9 @@ class TagEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options=None):
         super().reset(seed=seed)
         if seed is not None:
+            np.random.seed(seed)
             random.seed(seed)
-        self.stage = StageMap(self.width, self.height)
+        self.stage = StageMap(self.width, self.height, rng=self.np_random)
         self.oni = Agent(1.5, 1.5, (255, 0, 0))
         self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
         self.step_count = 0
@@ -48,7 +49,7 @@ class TagEnv(gym.Env):
         dx, dy = float(action[0]), float(action[1])
         self.oni.set_direction(dx, dy)
         # random policy for escapee
-        rnd = np.random.uniform(-1, 1, size=2)
+        rnd = self.np_random.uniform(-1, 1, size=2)
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
         self.oni.update(self.stage)
         self.nige.update(self.stage)

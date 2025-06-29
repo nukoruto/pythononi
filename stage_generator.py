@@ -1,12 +1,12 @@
 """Stage generator for tag game.
 """
-import random
 from typing import List, Tuple
+import numpy as np
 
 Cell = int
 Stage = List[List[Cell]]  # 0: path, 1: wall
 
-def generate_maze(width: int, height: int) -> Stage:
+def generate_maze(width: int, height: int, rng: np.random.Generator) -> Stage:
     """Generate a perfect maze using depth-first search."""
     # cells at odd indices are open spaces; even indices are walls
     grid = [[1 for _ in range(width)] for _ in range(height)]
@@ -19,9 +19,9 @@ def generate_maze(width: int, height: int) -> Stage:
     grid[1][1] = 0
     while stack:
         x, y = stack[-1]
-        random.shuffle(dirs)
+        ordered_dirs = [dirs[i] for i in rng.permutation(len(dirs))]
         carved = False
-        for dx, dy in dirs:
+        for dx, dy in ordered_dirs:
             nx, ny = x + dx, y + dy
             if in_bounds(nx, ny) and grid[ny][nx] == 1:
                 wx, wy = x + dx // 2, y + dy // 2
@@ -34,7 +34,7 @@ def generate_maze(width: int, height: int) -> Stage:
             stack.pop()
     return grid
 
-def remove_dead_ends(stage: Stage) -> Stage:
+def remove_dead_ends(stage: Stage, rng: np.random.Generator) -> Stage:
     """Remove dead ends by opening additional walls until every path cell has at
     least two open neighbors."""
     h, w = len(stage), len(stage[0])
@@ -49,19 +49,19 @@ def remove_dead_ends(stage: Stage) -> Stage:
                     if len(open_neighbors) <= 1:
                         walls = [n for n in neighbors if stage[n[1]][n[0]] == 1]
                         if walls:
-                            nx, ny = random.choice(walls)
+                            nx, ny = walls[int(rng.integers(0, len(walls)))]
                             stage[ny][nx] = 0
                             changed = True
     return stage
 
-def widen_paths(stage: Stage, width_range: Tuple[int, int]) -> Stage:
+def widen_paths(stage: Stage, width_range: Tuple[int, int], rng: np.random.Generator) -> Stage:
     """Randomly widen paths to create varying corridor widths."""
     h, w = len(stage), len(stage[0])
     min_w, max_w = width_range
     for y in range(1, h-1):
         for x in range(1, w-1):
-            if stage[y][x] == 0 and random.random() < 0.2:
-                widen = random.randint(min_w, max_w)
+            if stage[y][x] == 0 and rng.random() < 0.2:
+                widen = int(rng.integers(min_w, max_w + 1))
                 for dy in range(-widen, widen+1):
                     for dx in range(-widen, widen+1):
                         nx, ny = x + dx, y + dy
@@ -69,12 +69,14 @@ def widen_paths(stage: Stage, width_range: Tuple[int, int]) -> Stage:
                             stage[ny][nx] = 0
     return stage
 
-def generate_stage(width: int, height: int, path_width: Tuple[int, int]=(1,2)) -> Stage:
+def generate_stage(width: int, height: int, path_width: Tuple[int, int] = (1, 2), rng: np.random.Generator | None = None) -> Stage:
+    if rng is None:
+        rng = np.random.default_rng()
     if width % 2 == 0 or height % 2 == 0:
         raise ValueError("width and height must be odd to generate maze")
-    stage = generate_maze(width, height)
-    stage = remove_dead_ends(stage)
-    stage = widen_paths(stage, path_width)
+    stage = generate_maze(width, height, rng)
+    stage = remove_dead_ends(stage, rng)
+    stage = widen_paths(stage, path_width, rng)
     return stage
 
 def print_stage(stage: Stage) -> None:
