@@ -10,12 +10,19 @@ import numpy as np
 CELL_SIZE = 20
 FOV_DEG = 120
 FOV_DIST = 5
+EXTRA_WALL_PROB = 0.1
 
 
 class StageMap:
-    def __init__(self, width: int, height: int, rng: np.random.Generator | None = None):
+    def __init__(
+        self,
+        width: int,
+        height: int,
+        extra_wall_prob: float = 0.0,
+        rng: np.random.Generator | None = None,
+    ):
         self.rng = rng or np.random.default_rng()
-        self.grid = generate_stage(width, height, rng=self.rng)
+        self.grid = generate_stage(width, height, extra_wall_prob=extra_wall_prob, rng=self.rng)
         self.width = width
         self.height = height
 
@@ -173,7 +180,7 @@ def get_state(oni: Agent, nige: Agent) -> Tuple[List[float], List[float]]:
 def main():
     pygame.init()
     width, height = 31, 21
-    stage = StageMap(width, height)
+    stage = StageMap(width, height, extra_wall_prob=EXTRA_WALL_PROB)
 
     screen = pygame.display.set_mode((width * CELL_SIZE, height * CELL_SIZE))
     clock = pygame.time.Clock()

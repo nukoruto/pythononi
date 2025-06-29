@@ -69,7 +69,27 @@ def widen_paths(stage: Stage, width_range: Tuple[int, int], rng: np.random.Gener
                             stage[ny][nx] = 0
     return stage
 
-def generate_stage(width: int, height: int, path_width: Tuple[int, int] = (1, 2), rng: np.random.Generator | None = None) -> Stage:
+def add_random_walls(stage: Stage, prob: float, rng: np.random.Generator) -> Stage:
+    """Randomly convert path cells back into walls."""
+    if prob <= 0:
+        return stage
+    h, w = len(stage), len(stage[0])
+    for y in range(1, h-1):
+        for x in range(1, w-1):
+            if stage[y][x] == 0 and rng.random() < prob:
+                stage[y][x] = 1
+    # ensure start and goal remain open
+    stage[1][1] = 0
+    stage[h-2][w-2] = 0
+    return stage
+
+def generate_stage(
+    width: int,
+    height: int,
+    path_width: Tuple[int, int] = (1, 2),
+    extra_wall_prob: float = 0.0,
+    rng: np.random.Generator | None = None,
+) -> Stage:
     if rng is None:
         rng = np.random.default_rng()
     if width % 2 == 0 or height % 2 == 0:
@@ -77,6 +97,7 @@ def generate_stage(width: int, height: int, path_width: Tuple[int, int] = (1, 2)
     stage = generate_maze(width, height, rng)
     stage = remove_dead_ends(stage, rng)
     stage = widen_paths(stage, path_width, rng)
+    stage = add_random_walls(stage, extra_wall_prob, rng)
     return stage
 
 def print_stage(stage: Stage) -> None:

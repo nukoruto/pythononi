@@ -16,11 +16,18 @@ from tag_game import StageMap, Agent, CELL_SIZE
 class TagEnv(gym.Env):
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, width: int = 31, height: int = 21, max_steps: int = 500):
+    def __init__(
+        self,
+        width: int = 31,
+        height: int = 21,
+        max_steps: int = 500,
+        extra_wall_prob: float = 0.0,
+    ):
         super().__init__()
         self.width = width
         self.height = height
         self.max_steps = max_steps
+        self.extra_wall_prob = extra_wall_prob
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
@@ -37,7 +44,12 @@ class TagEnv(gym.Env):
         if seed is not None:
             np.random.seed(seed)
             random.seed(seed)
-        self.stage = StageMap(self.width, self.height, rng=self.np_random)
+        self.stage = StageMap(
+            self.width,
+            self.height,
+            extra_wall_prob=self.extra_wall_prob,
+            rng=self.np_random,
+        )
         self.oni = Agent(1.5, 1.5, (255, 0, 0))
         self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
         self.step_count = 0
