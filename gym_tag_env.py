@@ -188,6 +188,10 @@ class TagEnv(gym.Env):
             ),
             2,
         )
+        # Display current step count
+        font = pygame.font.SysFont(None, 24)
+        step_text = font.render(f"Step: {self.step_count}", True, (0, 0, 0))
+        self.screen.blit(step_text, (10, 10))
         pygame.display.flip()
         if self.clock:
             self.clock.tick(60 * self.speed_multiplier)
