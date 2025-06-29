@@ -22,6 +22,7 @@ class TagEnv(gym.Env):
         height: int = 21,
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
+        speed_multiplier: float = 1.0,
     ):
         super().__init__()
         self.width = width
@@ -36,6 +37,7 @@ class TagEnv(gym.Env):
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
+        self.speed_multiplier = max(0.1, speed_multiplier)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
 
@@ -104,7 +106,7 @@ class TagEnv(gym.Env):
             )
         pygame.display.flip()
         if self.clock:
-            self.clock.tick(60)
+            self.clock.tick(60 * self.speed_multiplier)
 
     def close(self):
         if self.screen:
