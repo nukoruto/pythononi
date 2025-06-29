@@ -52,6 +52,7 @@ class Agent:
         self.color = color
         self.max_speed = max_speed
         self.accel = max_speed / float(accel_steps)
+        self.radius = CELL_SIZE // 3
 
     def set_direction(self, dx: float, dy: float) -> None:
         v = pygame.Vector2(dx, dy)
@@ -84,12 +85,11 @@ class Agent:
         self.pos = new_pos
 
     def draw(self, screen: pygame.Surface) -> None:
-        r = CELL_SIZE // 3
         pygame.draw.circle(
             screen,
             self.color,
             (int(self.pos.x * CELL_SIZE + CELL_SIZE / 2), int(self.pos.y * CELL_SIZE + CELL_SIZE / 2)),
-            r,
+            self.radius,
         )
         self.draw_fov(screen)
 
@@ -122,6 +122,17 @@ class Agent:
             return True
         ang = math.degrees(math.acos(self.facing.normalize().dot(diff.normalize())))
         return ang <= FOV_DEG / 2
+
+    def collides_with(self, other: "Agent") -> bool:
+        center_self = pygame.Vector2(
+            self.pos.x * CELL_SIZE + CELL_SIZE / 2,
+            self.pos.y * CELL_SIZE + CELL_SIZE / 2,
+        )
+        center_other = pygame.Vector2(
+            other.pos.x * CELL_SIZE + CELL_SIZE / 2,
+            other.pos.y * CELL_SIZE + CELL_SIZE / 2,
+        )
+        return center_self.distance_to(center_other) < self.radius + other.radius
 
 
 def main():
@@ -171,6 +182,15 @@ def main():
                 ),
                 2,
             )
+        if oni.collides_with(nige):
+            font = pygame.font.SysFont(None, 48)
+            text = font.render("Caught!", True, (255, 0, 0))
+            rect = text.get_rect(center=(width * CELL_SIZE // 2, height * CELL_SIZE // 2))
+            screen.blit(text, rect)
+            pygame.display.flip()
+            pygame.time.wait(1000)
+            running = False
+            continue
         pygame.display.flip()
         clock.tick(60)
 
