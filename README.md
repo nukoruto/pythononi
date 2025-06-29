@@ -29,6 +29,12 @@ python3 tag_game.py
 
 ## 学習
 
+以下のコマンドで必要なライブラリをインストールしてください。
+
+```bash
+pip install -r requirements.txt
+```
+
 `train.py` では Stable-Baselines3 の PPO を用いた学習が行えます。
 学習中にマップと各エージェントの視野を表示したい場合は `--render` オプションを
 指定してください。
