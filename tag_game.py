@@ -54,6 +54,7 @@ class Agent:
         self.accel = max_speed / float(accel_steps)
         self.radius = CELL_SIZE // 3
 
+
     def set_direction(self, dx: float, dy: float) -> None:
         v = pygame.Vector2(dx, dy)
         if v.length_squared() > 0:
