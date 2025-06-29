@@ -135,6 +135,25 @@ class Agent:
         )
         return center_self.distance_to(center_other) < self.radius + other.radius
 
+    def observe(self, other: "Agent") -> List[float]:
+        """Return relative position (dx, dy) and visibility of ``other``.
+
+        The result is a simple state vector suitable for reinforcement learning
+        algorithms. ``dx`` and ``dy`` represent the difference in grid units from
+        ``self`` to ``other``. ``visible`` is ``1.0`` if ``other`` is within this
+        agent's field of view, otherwise ``0.0``.
+        """
+
+        diff = other.pos - self.pos
+        visible = 1.0 if self.can_see(other) else 0.0
+        return [diff.x, diff.y, visible]
+
+
+def get_state(oni: Agent, nige: Agent) -> Tuple[List[float], List[float]]:
+    """Return observation vectors for both agents."""
+
+    return oni.observe(nige), nige.observe(oni)
+
 
 def main():
     pygame.init()
@@ -164,6 +183,10 @@ def main():
 
         oni.update(stage)
         nige.update(stage)
+
+        oni_state, nige_state = get_state(oni, nige)
+        # Debug print of observation vectors
+        print(f"oni_state={oni_state} nige_state={nige_state}")
 
         screen.fill((0, 0, 0))
         stage.draw(screen)
