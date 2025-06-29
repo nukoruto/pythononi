@@ -26,3 +26,15 @@ python3 tag_game.py
 `reset()` でステージとエージェントを再初期化し、`step(action)` では加速度ベースで
 移動させながら報酬と終了判定を返します。行動・観測はいずれも `spaces.Box` により
 連続値として定義しています。`render()` を呼び出すと pygame で状態を描画します。
+
+## 学習
+
+`train.py` では Stable-Baselines3 の PPO を用いた学習が行えます。
+学習中にマップと各エージェントの視野を表示したい場合は `--render` オプションを
+指定してください。
+
+```bash
+python3 train.py --timesteps 50000 --render
+```
+
+描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
