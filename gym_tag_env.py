@@ -1,6 +1,5 @@
 # coding: utf-8
 """Gym environment for the tag game."""
-import math
 import random
 from typing import Tuple, List
 
@@ -118,8 +117,8 @@ class TagEnv(gym.Env):
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
-        low = np.array([-width, -height, 0], dtype=np.float32)
-        high = np.array([width, height, 1], dtype=np.float32)
+        low = np.array([-width, -height], dtype=np.float32)
+        high = np.array([width, height], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
@@ -176,20 +175,19 @@ class TagEnv(gym.Env):
         self.stage.draw(self.screen)
         self.oni.draw(self.screen)
         self.nige.draw(self.screen)
-        if self.oni.can_see(self.nige):
-            pygame.draw.line(
-                self.screen,
-                (255, 0, 0),
-                (
-                    int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                    int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2),
-                ),
-                (
-                    int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                    int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2),
-                ),
-                2,
-            )
+        pygame.draw.line(
+            self.screen,
+            (255, 0, 0),
+            (
+                int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2),
+                int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2),
+            ),
+            (
+                int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2),
+                int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2),
+            ),
+            2,
+        )
         pygame.display.flip()
         if self.clock:
             self.clock.tick(60 * self.speed_multiplier)

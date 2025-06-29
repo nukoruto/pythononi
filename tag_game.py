@@ -8,8 +8,6 @@ import numpy as np
 
 
 CELL_SIZE = 20
-FOV_DEG = 120
-FOV_DIST = 5
 EXTRA_WALL_PROB = 0.1
 
 
@@ -114,37 +112,8 @@ class Agent:
             (int(self.pos.x * CELL_SIZE + CELL_SIZE / 2), int(self.pos.y * CELL_SIZE + CELL_SIZE / 2)),
             self.radius,
         )
-        self.draw_fov(screen)
 
-    def draw_fov(self, screen: pygame.Surface) -> None:
-        start_angle = math.atan2(self.facing.y, self.facing.x) - math.radians(FOV_DEG) / 2
-        end_angle = start_angle + math.radians(FOV_DEG)
-        center = (
-            int(self.pos.x * CELL_SIZE + CELL_SIZE / 2),
-            int(self.pos.y * CELL_SIZE + CELL_SIZE / 2),
-        )
-        pygame.draw.arc(
-            screen,
-            (150, 150, 255),
-            pygame.Rect(
-                center[0] - FOV_DIST * CELL_SIZE,
-                center[1] - FOV_DIST * CELL_SIZE,
-                2 * FOV_DIST * CELL_SIZE,
-                2 * FOV_DIST * CELL_SIZE,
-            ),
-            start_angle,
-            end_angle,
-            1,
-        )
 
-    def can_see(self, other: "Agent") -> bool:
-        diff = other.pos - self.pos
-        if diff.length() > FOV_DIST:
-            return False
-        if diff.length_squared() == 0:
-            return True
-        ang = math.degrees(math.acos(self.facing.normalize().dot(diff.normalize())))
-        return ang <= FOV_DEG / 2
 
     def collides_with(self, other: "Agent") -> bool:
         center_self = pygame.Vector2(
@@ -158,17 +127,10 @@ class Agent:
         return center_self.distance_to(center_other) < self.radius + other.radius
 
     def observe(self, other: "Agent") -> List[float]:
-        """Return relative position (dx, dy) and visibility of ``other``.
-
-        The result is a simple state vector suitable for reinforcement learning
-        algorithms. ``dx`` and ``dy`` represent the difference in grid units from
-        ``self`` to ``other``. ``visible`` is ``1.0`` if ``other`` is within this
-        agent's field of view, otherwise ``0.0``.
-        """
+        """Return relative position (dx, dy) of ``other``."""
 
         diff = other.pos - self.pos
-        visible = 1.0 if self.can_see(other) else 0.0
-        return [diff.x, diff.y, visible]
+        return [diff.x, diff.y]
 
 
 def get_state(oni: Agent, nige: Agent) -> Tuple[List[float], List[float]]:
@@ -214,20 +176,19 @@ def main():
         stage.draw(screen)
         oni.draw(screen)
         nige.draw(screen)
-        if oni.can_see(nige):
-            pygame.draw.line(
-                screen,
-                (255, 0, 0),
-                (
-                    int(oni.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                    int(oni.pos.y * CELL_SIZE + CELL_SIZE / 2),
-                ),
-                (
-                    int(nige.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                    int(nige.pos.y * CELL_SIZE + CELL_SIZE / 2),
-                ),
-                2,
-            )
+        pygame.draw.line(
+            screen,
+            (255, 0, 0),
+            (
+                int(oni.pos.x * CELL_SIZE + CELL_SIZE / 2),
+                int(oni.pos.y * CELL_SIZE + CELL_SIZE / 2),
+            ),
+            (
+                int(nige.pos.x * CELL_SIZE + CELL_SIZE / 2),
+                int(nige.pos.y * CELL_SIZE + CELL_SIZE / 2),
+            ),
+            2,
+        )
         if oni.collides_with(nige):
             font = pygame.font.SysFont(None, 48)
             text = font.render("Caught!", True, (255, 0, 0))

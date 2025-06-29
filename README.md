@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ```
 
 `train.py` では Stable-Baselines3 の PPO を用いた学習が行えます。
-学習中にマップと各エージェントの視野を表示したい場合は `--render` オプションを
+学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを
 指定してください。
 
 ```bash
