@@ -24,6 +24,21 @@ class StageMap:
             return True
         return self.grid[y][x] == 1
 
+    def collides_circle(self, x: float, y: float, radius: float) -> bool:
+        """Return True if a circle (in grid units) intersects a wall."""
+        left = int(math.floor(x - radius))
+        right = int(math.floor(x + radius))
+        top = int(math.floor(y - radius))
+        bottom = int(math.floor(y + radius))
+        for gy in range(top, bottom + 1):
+            for gx in range(left, right + 1):
+                if self.is_wall(gx, gy):
+                    closest_x = max(gx, min(x, gx + 1))
+                    closest_y = max(gy, min(y, gy + 1))
+                    if (x - closest_x) ** 2 + (y - closest_y) ** 2 < radius ** 2:
+                        return True
+        return False
+
     def draw(self, screen: pygame.Surface) -> None:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)
@@ -71,20 +86,19 @@ class Agent:
                 self.vel.scale_to_length(self.max_speed)
         else:
             self.vel = pygame.Vector2(0, 0)
+        radius = self.radius / CELL_SIZE
 
-        new_pos = self.pos + self.vel
-        # x axis collision
-        next_x = int(new_pos.x)
-        if stage.is_wall(next_x, int(self.pos.y)):
-            new_pos.x = self.pos.x
+        new_x = self.pos.x + self.vel.x
+        if stage.collides_circle(new_x, self.pos.y, radius):
+            new_x = self.pos.x
             self.vel.x = 0
-        # y axis collision
-        next_y = int(new_pos.y)
-        if stage.is_wall(int(new_pos.x), next_y):
-            new_pos.y = self.pos.y
+
+        new_y = self.pos.y + self.vel.y
+        if stage.collides_circle(new_x, new_y, radius):
+            new_y = self.pos.y
             self.vel.y = 0
 
-        self.pos = new_pos
+        self.pos.update(new_x, new_y)
 
     def draw(self, screen: pygame.Surface) -> None:
         pygame.draw.circle(
