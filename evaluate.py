@@ -22,7 +22,8 @@ def run_episode(env: TagEnv, model: PPO, render: bool) -> float:
     total_reward = 0.0
     while not done:
         action, _ = model.predict(obs, deterministic=True)
-        obs, reward, done, _ = env.step(action)
+        obs, reward, terminated, truncated, _ = env.step(action)
+        done = terminated or truncated
         total_reward += reward
         if render:
             env.render()
