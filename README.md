@@ -21,7 +21,7 @@ python3 stage_generator.py
 以下のスクリプトで単純な鬼ごっこを実行できます。
 
 ```bash
-python3 tag_game.py
+py tag_game.py
 ```
 
 また、強化学習向けには `gym_tag_env.py` に `TagEnv` クラスを実装しています。
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 指定してください。
 
 ```bash
-python3 train.py --timesteps 50000 --render
+py train.py --timesteps 50000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
