@@ -47,3 +47,6 @@ py train.py --timesteps 50000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
+学習時間を秒単位で制限したい場合は `--duration` を用います。複数回の学習を行う
+場合は `--runs` で回数を、`--parallel` で並列実行数を指定できます。環境の描画速度
+を調整する `--speed-multiplier` オプションも利用可能です。

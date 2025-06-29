@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument("--model", type=str, default="ppo_tag.zip", help="Model path")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--render", action="store_true", help="Render environment")
+    parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
     return parser.parse_args()
 
 
@@ -34,7 +35,7 @@ def main():
     args = parse_args()
     if not os.path.exists(args.model):
         raise FileNotFoundError(f"Model not found: {args.model}")
-    env = TagEnv()
+    env = TagEnv(speed_multiplier=args.speed_multiplier)
     model = PPO.load(args.model, env=env)
 
     rewards: List[float] = []
