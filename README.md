@@ -34,8 +34,7 @@ py tag_game.py
 pip install -r requirements.txt
 ```
 
-`train.py` は 鬼と逃げを同時に学習する自作ポリシー勾配方式がデフォルトです。
-`--mode alternate` を指定すると Stable-Baselines3 を用いた交互学習に切り替えられます。
+`train.py` は 鬼と逃げを同時に学習する自作ポリシー勾配方式です。
 学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
 描画時にはステップ数の代わりに残り時間や実行回数、鬼と逃げの累積報酬が画面上部に表示されます。
 `train.py` では各エピソード開始時にこれらの値を自動設定するため、表示が常に最新の状態に保たれます。
@@ -76,7 +75,6 @@ py train.py --episodes 1000 --render
 | `--episodes <int>` | 総エピソード数 | 10 |
 | `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
 | `--num-envs <int>` | 並列環境数 | 1 |
-| `--mode {selfplay,alternate}` | 学習モード | `selfplay` |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
 | `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
 
