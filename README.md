@@ -74,7 +74,6 @@ py train.py --episodes 1000 --render
 | `--episodes <int>` | 総エピソード数 | 10 |
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
 | `--num-envs <int>` | 並列環境数 | 1 |
-| `--mode {selfplay,alternate}` | 学習モード | `selfplay` |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
 | `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
 
