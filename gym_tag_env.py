@@ -107,8 +107,10 @@ class MultiTagEnv(gym.Env):
         self.oni.set_direction(odx, ody)
         self.nige.set_direction(ndx, ndy)
 
-        self.oni.update(self.stage)
-        self.nige.update(self.stage)
+        updates = max(1, int(round(self.speed_multiplier)))
+        for _ in range(updates):
+            self.oni.update(self.stage)
+            self.nige.update(self.stage)
 
         oni_obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
         nige_obs = np.array(self.nige.observe(self.oni), dtype=np.float32)
@@ -268,8 +270,10 @@ class TagEnv(gym.Env):
         # random policy for escapee
         rnd = self.np_random.uniform(-1, 1, size=2)
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
-        self.oni.update(self.stage)
-        self.nige.update(self.stage)
+        updates = max(1, int(round(self.speed_multiplier)))
+        for _ in range(updates):
+            self.oni.update(self.stage)
+            self.nige.update(self.stage)
 
         obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
         terminated = self.oni.collides_with(self.nige)
