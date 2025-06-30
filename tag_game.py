@@ -44,16 +44,17 @@ class StageMap:
                         return True
         return False
 
-    def draw(self, screen: pygame.Surface) -> None:
+    def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)
+        off_x, off_y = offset
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 color = wall_color if cell == 1 else floor_color
                 pygame.draw.rect(
                     screen,
                     color,
-                    pygame.Rect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+                    pygame.Rect(off_x + x * CELL_SIZE, off_y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
                 )
 
 
@@ -105,11 +106,15 @@ class Agent:
 
         self.pos.update(new_x, new_y)
 
-    def draw(self, screen: pygame.Surface) -> None:
+    def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
+        off_x, off_y = offset
         pygame.draw.circle(
             screen,
             self.color,
-            (int(self.pos.x * CELL_SIZE + CELL_SIZE / 2), int(self.pos.y * CELL_SIZE + CELL_SIZE / 2)),
+            (
+                int(off_x + self.pos.x * CELL_SIZE + CELL_SIZE / 2),
+                int(off_y + self.pos.y * CELL_SIZE + CELL_SIZE / 2),
+            ),
             self.radius,
         )
 

@@ -37,7 +37,8 @@ pip install -r requirements.txt
 `train.py` では Stable-Baselines3 の PPO を用いた学習が行えます。
 学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを
 指定してください。
-描画時には現在のステップ数も画面左上に表示されます。
+描画時にはステップ数の代わりに残り時間や実行回数、
+鬼と逃げの累積報酬が画面上部に表示されます。
 
 ```bash
 py train.py --timesteps 50000 --render

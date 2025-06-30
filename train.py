@@ -33,6 +33,9 @@ class RenderCallback(BaseCallback):
         self.render_interval = max(1, render_interval)
 
     def _on_step(self) -> bool:  # type: ignore[override]
+        if hasattr(self.env, "training_end_time"):
+            import time
+            self.env.remaining_time = max(0.0, self.env.training_end_time - time.time())
         if self.n_calls % self.render_interval == 0:
             self.env.render()
         return True
@@ -43,6 +46,8 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
 
     # --- train oni ---
     oni_env = TagEnv(speed_multiplier=args.speed_multiplier)
+    oni_env.current_run = run_idx + 1
+    oni_env.total_runs = args.runs
     oni_model_path = args.oni_model.replace(".zip", f"_{run_idx}.zip")
     if os.path.exists(args.oni_model) and run_idx == 0:
         oni_model = PPO.load(args.oni_model, env=oni_env)
@@ -64,6 +69,7 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
 
     import time
     start = time.time()
+    oni_env.training_end_time = start + args.duration
     while time.time() - start < args.duration:
         oni_model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
     oni_model.save(oni_model_path)
@@ -99,6 +105,8 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
             self.env.close()
 
     nige_env = NigeEnv(fixed_oni)
+    nige_env.env.current_run = run_idx + 1
+    nige_env.env.total_runs = args.runs
     nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
     if os.path.exists(args.nige_model) and run_idx == 0:
         nige_model = PPO.load(args.nige_model, env=nige_env)
@@ -111,6 +119,7 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
         callbacks.append(RenderCallback(nige_env, render_interval=args.render_interval))
 
     start = time.time()
+    nige_env.env.training_end_time = start + args.duration
     while time.time() - start < args.duration:
         nige_model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
     nige_model.save(nige_model_path)
