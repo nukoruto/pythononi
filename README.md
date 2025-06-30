@@ -47,3 +47,13 @@ py train.py --timesteps 50000 --render
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
 学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。`train.py` では内部で `EpisodeSwapEnv` を用いて 1 エピソードごとに鬼と逃げの学習対象を自動的に切り替えます。学習エピソード数は `--episodes` で指定できます。
 学習後、鬼側モデルは `oni_<run>.zip`、逃げ側モデルは `nige_<run>.zip` として保存されます。
+
+## 同時学習
+
+`train_selfplay.py` を使うと、鬼と逃げの両方を同じエピソードから同時に学習させる簡易的な自作ポリシー勾配による学習が行えます。Stable-Baselines3 は利用せず、PyTorch を用いた軽量実装です。
+
+```bash
+py train_selfplay.py --episodes 1000 --render
+```
+
+学習が終了すると `oni_selfplay.pth` と `nige_selfplay.pth` に各ポリシーの重みが保存されます。
