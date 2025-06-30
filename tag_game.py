@@ -191,13 +191,8 @@ def main():
         odx = keys[pygame.K_d] - keys[pygame.K_a]
         ody = keys[pygame.K_s] - keys[pygame.K_w]
         oni.set_direction(odx, ody)
-
         oni.update(stage)
         nige.update(stage)
-
-        oni_state, nige_state = get_state(oni, nige)
-        # Debug print of observation vectors
-        print(f"oni_state={oni_state} nige_state={nige_state}")
 
         screen.fill((0, 0, 0))
         pygame.draw.rect(
