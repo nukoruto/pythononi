@@ -34,8 +34,7 @@ py tag_game.py
 pip install -r requirements.txt
 ```
 
-`train.py` は 鬼と逃げを同時に学習する自作ポリシー勾配方式がデフォルトです。
-`--mode alternate` を指定すると Stable-Baselines3 を用いた交互学習に切り替えられます。
+`train.py` は 鬼と逃げを同時に学習する自作ポリシー勾配方式です。
 学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
 描画時にはステップ数の代わりに残り時間や実行回数、鬼と逃げの累積報酬が画面上部に表示されます。
 
@@ -44,7 +43,7 @@ py train.py --episodes 1000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。交互学習モードでは `EpisodeSwapEnv` を利用し、鬼と逃げをエピソードごとに切り替えて学習します。
+学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。
 学習後、鬼側モデルは `oni_selfplay.pth`、逃げ側モデルは `nige_selfplay.pth` として保存されます。
 
 ## 旧 self-play スクリプト
