@@ -1,6 +1,7 @@
 # coding: utf-8
 """Gym environment for the tag game."""
 import random
+import time
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -95,6 +96,8 @@ class MultiTagEnv(gym.Env):
         assert self.oni and self.nige and self.stage
         action_oni, action_nige = actions
         self.step_count += 1
+        if self.training_end_time is not None:
+            self.remaining_time = max(0.0, self.training_end_time - time.time())
 
         odx, ody = float(action_oni[0]), float(action_oni[1])
         ndx, ndy = float(action_nige[0]), float(action_nige[1])
@@ -248,6 +251,8 @@ class TagEnv(gym.Env):
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
         assert self.oni and self.nige and self.stage
         self.step_count += 1
+        if self.training_end_time is not None:
+            self.remaining_time = max(0.0, self.training_end_time - time.time())
         dx, dy = float(action[0]), float(action[1])
         self.oni.set_direction(dx, dy)
         # random policy for escapee
@@ -308,6 +313,11 @@ class TagEnv(gym.Env):
         font = pygame.font.SysFont(None, 24)
         txt_time = font.render(f"残り{self.remaining_time:.2f}秒", True, (0, 0, 0))
         txt_run = font.render(f"{self.current_run}/{self.total_runs}回目", True, (0, 0, 0))
+        txt_reward = font.render(
+            f"R:{self.cumulative_reward:.2f}",
+            True,
+            (0, 0, 0),
+        )
         self.screen.blit(txt_time, (10, 5))
         self.screen.blit(txt_run, (160, 5))
         self.screen.blit(txt_reward, (10, 25))
