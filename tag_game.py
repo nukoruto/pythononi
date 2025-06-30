@@ -53,6 +53,67 @@ class StageMap:
                         return True
         return False
 
+    def shortest_path_direction(
+        self, start: pygame.Vector2, goal: pygame.Vector2
+    ) -> pygame.Vector2:
+        """Return normalized direction of the first step on the shortest path.
+
+        Parameters
+        ----------
+        start : pygame.Vector2
+            開始位置（セル座標）
+        goal : pygame.Vector2
+            目的地（セル座標）
+
+        Returns
+        -------
+        pygame.Vector2
+            最短経路上で最初に進むべき方向ベクトル。経路が存在しない
+            場合は長さ0のベクトルを返す。
+        """
+
+        start_cell = (int(start.x), int(start.y))
+        goal_cell = (int(goal.x), int(goal.y))
+        if start_cell == goal_cell:
+            return pygame.Vector2(0, 0)
+
+        from collections import deque
+
+        queue: deque[tuple[int, int]] = deque([start_cell])
+        parents: dict[tuple[int, int], tuple[int, int] | None] = {start_cell: None}
+
+        while queue:
+            cx, cy = queue.popleft()
+            if (cx, cy) == goal_cell:
+                break
+            for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                nx, ny = cx + dx, cy + dy
+                if (
+                    0 <= nx < self.width
+                    and 0 <= ny < self.height
+                    and not self.is_wall(nx, ny)
+                    and (nx, ny) not in parents
+                ):
+                    parents[(nx, ny)] = (cx, cy)
+                    queue.append((nx, ny))
+
+        if goal_cell not in parents:
+            return pygame.Vector2(0, 0)
+
+        # 最短経路を逆順にたどり、開始セルの次のセルを取得
+        cur = goal_cell
+        while parents[cur] and parents[cur] != start_cell:
+            cur = parents[cur]
+        if parents[cur] is None:
+            return pygame.Vector2(0, 0)
+
+        dx = cur[0] - start_cell[0]
+        dy = cur[1] - start_cell[1]
+        direction = pygame.Vector2(dx, dy)
+        if direction.length_squared() > 0:
+            direction = direction.normalize()
+        return direction
+
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)
@@ -152,17 +213,31 @@ class Agent:
         )
         return center_self.distance_to(center_other) < self.radius + other.radius
 
-    def observe(self, other: "Agent") -> List[float]:
-        """Return relative position (dx, dy) of ``other``."""
+    def observe(
+        self, other: "Agent", stage: StageMap | None = None
+    ) -> List[float]:
+        """Return vector toward ``other``.
 
-        diff = other.pos - self.pos
-        return [diff.x, diff.y]
+        壁を考慮した最短経路方向を求める場合は ``stage`` を渡す。
+        ``stage`` が ``None`` の場合は従来の相対座標を返す。
+        """
+
+        if stage is None:
+            diff = other.pos - self.pos
+            return [diff.x, diff.y]
+
+        direction = stage.shortest_path_direction(self.pos, other.pos)
+        return [direction.x, direction.y]
 
 
-def get_state(oni: Agent, nige: Agent) -> Tuple[List[float], List[float]]:
+def get_state(
+    oni: Agent, nige: Agent, stage: StageMap | None = None
+) -> Tuple[List[float], List[float]]:
     """Return observation vectors for both agents."""
 
-    return oni.observe(nige), nige.observe(oni)
+    if stage is None:
+        return oni.observe(nige), nige.observe(oni)
+    return oni.observe(nige, stage), nige.observe(oni, stage)
 
 
 def main():

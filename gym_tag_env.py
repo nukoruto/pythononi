@@ -85,8 +85,8 @@ class MultiTagEnv(gym.Env):
         self.cumulative_rewards = [0.0, 0.0]
         self.last_rewards = (0.0, 0.0)
         obs = (
-            np.array(self.oni.observe(self.nige), dtype=np.float32),
-            np.array(self.nige.observe(self.oni), dtype=np.float32),
+            np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
+            np.array(self.nige.observe(self.oni, self.stage), dtype=np.float32),
         )
         return obs, {}
 
@@ -112,8 +112,12 @@ class MultiTagEnv(gym.Env):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
 
-        oni_obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
-        nige_obs = np.array(self.nige.observe(self.oni), dtype=np.float32)
+        oni_obs = np.array(
+            self.oni.observe(self.nige, self.stage), dtype=np.float32
+        )
+        nige_obs = np.array(
+            self.nige.observe(self.oni, self.stage), dtype=np.float32
+        )
 
         terminated = self.oni.collides_with(self.nige)
         truncated = self.step_count >= self.max_steps
@@ -255,7 +259,10 @@ class TagEnv(gym.Env):
         self.step_count = 0
         self.cumulative_reward = 0.0
         self.last_reward = 0.0
-        return np.array(self.oni.observe(self.nige), dtype=np.float32), {}
+        return (
+            np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
+            {},
+        )
 
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
         assert self.oni and self.nige and self.stage
@@ -275,7 +282,9 @@ class TagEnv(gym.Env):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
 
-        obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
+        obs = np.array(
+            self.oni.observe(self.nige, self.stage), dtype=np.float32
+        )
         terminated = self.oni.collides_with(self.nige)
         truncated = self.step_count >= self.max_steps
         if terminated:
