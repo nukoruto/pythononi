@@ -168,10 +168,14 @@ class MultiTagEnv(gym.Env):
             2,
         )
         font = pygame.font.SysFont(None, 24)
-        txt_time = font.render(f"残り{self.remaining_time:.2f}秒", True, (0, 0, 0))
-        txt_run = font.render(f"{self.current_run}/{self.total_runs}回目", True, (0, 0, 0))
+        txt_time = font.render(
+            f"Time:{self.remaining_time:.2f}s", True, (0, 0, 0)
+        )
+        txt_run = font.render(
+            f"Run:{self.current_run}/{self.total_runs}", True, (0, 0, 0)
+        )
         txt_reward = font.render(
-            f"鬼R:{self.cumulative_rewards[0]:.2f} 逃R:{self.cumulative_rewards[1]:.2f}",
+            f"O:{self.cumulative_rewards[0]:.2f} N:{self.cumulative_rewards[1]:.2f}",
             True,
             (0, 0, 0),
         )
@@ -311,8 +315,12 @@ class TagEnv(gym.Env):
             2,
         )
         font = pygame.font.SysFont(None, 24)
-        txt_time = font.render(f"残り{self.remaining_time:.2f}秒", True, (0, 0, 0))
-        txt_run = font.render(f"{self.current_run}/{self.total_runs}回目", True, (0, 0, 0))
+        txt_time = font.render(
+            f"Time:{self.remaining_time:.2f}s", True, (0, 0, 0)
+        )
+        txt_run = font.render(
+            f"Run:{self.current_run}/{self.total_runs}", True, (0, 0, 0)
+        )
         txt_reward = font.render(
             f"R:{self.cumulative_reward:.2f}",
             True,
