@@ -7,6 +7,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
 from episode_swap_env import EpisodeSwapEnv
+from stable_baselines3.common.env_util import make_vec_env
 
 
 def parse_args():
@@ -22,6 +23,7 @@ def parse_args():
     parser.add_argument("--episodes", type=int, default=10, help="Episodes per run")
     parser.add_argument("--parallel", type=int, default=1, help="Number of concurrent runs")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments per run")
     return parser.parse_args()
 
 
@@ -42,10 +44,21 @@ class RenderCallback(BaseCallback):
         return True
 
 
+def _create_env(args: argparse.Namespace):
+    if args.num_envs > 1:
+        if args.render:
+            print("--render は --num-envs が1のときのみ有効です")
+        return make_vec_env(
+            lambda: EpisodeSwapEnv(speed_multiplier=args.speed_multiplier),
+            n_envs=args.num_envs,
+        )
+    return EpisodeSwapEnv(speed_multiplier=args.speed_multiplier)
+
+
 def run_single(run_idx: int, args: argparse.Namespace) -> None:
     """Alternate training between oni and nige each episode."""
 
-    env = EpisodeSwapEnv(speed_multiplier=args.speed_multiplier)
+    env = _create_env(args)
     oni_model_path = args.oni_model.replace(".zip", f"_{run_idx}.zip")
     nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
 
@@ -61,14 +74,25 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
     else:
         nige_model = PPO("MlpPolicy", env, verbose=1)
 
-    env.oni_model = oni_model
-    env.nige_model = nige_model
+    if hasattr(env, "envs"):
+        for e in env.envs:
+            e.oni_model = oni_model
+            e.nige_model = nige_model
+    else:
+        env.oni_model = oni_model
+        env.nige_model = nige_model
 
     for ep in range(args.episodes):
         train_oni = ep % 2 == 0
-        env.set_training_agent("oni" if train_oni else "nige")
-        env.base_env.current_run = ep + 1
-        env.base_env.total_runs = args.episodes
+        if hasattr(env, "envs"):
+            for e in env.envs:
+                e.set_training_agent("oni" if train_oni else "nige")
+                e.base_env.current_run = ep + 1
+                e.base_env.total_runs = args.episodes
+        else:
+            env.set_training_agent("oni" if train_oni else "nige")
+            env.base_env.current_run = ep + 1
+            env.base_env.total_runs = args.episodes
 
         callbacks: list[BaseCallback] = []
         if args.checkpoint_freq > 0:
@@ -80,12 +104,16 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
                     name_prefix=f"{prefix}_checkpoint_{run_idx}_{ep}"
                 )
             )
-        if args.render and args.parallel == 1:
+        if args.render and args.parallel == 1 and args.num_envs == 1:
             callbacks.append(RenderCallback(env, render_interval=args.render_interval))
 
         import time
         start = time.time()
-        env.training_end_time = start + args.duration
+        if hasattr(env, "envs"):
+            for e in env.envs:
+                e.training_end_time = start + args.duration
+        else:
+            env.training_end_time = start + args.duration
         model = oni_model if train_oni else nige_model
         while time.time() - start < args.duration:
             model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
