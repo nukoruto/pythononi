@@ -15,6 +15,10 @@ EXTRA_WALL_PROB = 0.1
 INFO_PANEL_HEIGHT = 40
 DEFAULT_DURATION = 10.0
 
+# 加速に関するマジックナンバー
+CONTINUOUS_ACCEL = 0.01
+MAX_SPEED_BOOST = 0.3
+
 
 class StageMap:
     def __init__(
@@ -80,34 +84,46 @@ class Agent:
         self.max_speed = max_speed
         self.accel = max_speed / float(accel_steps)
         self.radius = CELL_SIZE // 3
+        self.speed_boost = 0.0
 
 
     def set_direction(self, dx: float, dy: float) -> None:
         v = pygame.Vector2(dx, dy)
         if v.length_squared() > 0:
-            self.dir = v.normalize()
+            v_norm = v.normalize()
+            if v_norm.dot(self.facing) > 0.99:
+                self.speed_boost = min(self.speed_boost + CONTINUOUS_ACCEL, MAX_SPEED_BOOST)
+            else:
+                self.speed_boost = 0.0
+            self.dir = v_norm
             self.facing = self.dir
         else:
             self.dir = pygame.Vector2(0, 0)
+            self.speed_boost = 0.0
 
     def update(self, stage: StageMap) -> None:
         if self.dir.length_squared() > 0:
-            self.vel += self.dir * self.accel
-            if self.vel.length() > self.max_speed:
-                self.vel.scale_to_length(self.max_speed)
+            accel = self.accel + self.speed_boost
+            self.vel += self.dir * accel
+            max_speed = self.max_speed + self.speed_boost
+            if self.vel.length() > max_speed:
+                self.vel.scale_to_length(max_speed)
         else:
             self.vel = pygame.Vector2(0, 0)
+            self.speed_boost = 0.0
         radius = self.radius / CELL_SIZE
 
         new_x = self.pos.x + self.vel.x
         if stage.collides_circle(new_x, self.pos.y, radius):
             new_x = self.pos.x
             self.vel.x = 0
+            self.speed_boost = 0.0
 
         new_y = self.pos.y + self.vel.y
         if stage.collides_circle(new_x, new_y, radius):
             new_y = self.pos.y
             self.vel.y = 0
+            self.speed_boost = 0.0
 
         self.pos.update(new_x, new_y)
 

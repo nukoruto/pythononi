@@ -9,10 +9,7 @@ import torch.optim as optim
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
-from episode_swap_env import EpisodeSwapEnv
 from gym_tag_env import MultiTagEnv
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.vec_env import VecEnv
 
 
 def parse_args():
@@ -27,7 +24,6 @@ def parse_args():
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments")
-    parser.add_argument("--mode", choices=["selfplay", "alternate"], default="selfplay", help="Training mode")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor for self-play")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate for self-play")
     return parser.parse_args()
@@ -53,15 +49,7 @@ class RenderCallback(BaseCallback):
         return True
 
 
-def _create_env(args: argparse.Namespace):
-    if args.num_envs > 1:
-        if args.render:
-            print("--render は --num-envs が1のときのみ有効です")
-        return make_vec_env(
-            lambda: EpisodeSwapEnv(speed_multiplier=args.speed_multiplier),
-            n_envs=args.num_envs,
-        )
-    return EpisodeSwapEnv(speed_multiplier=args.speed_multiplier)
+
 
 
 class Policy(nn.Module):
@@ -219,12 +207,11 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
     env.close()
 
 
+
+
 def main():
     args = parse_args()
-    if args.mode == "selfplay":
-        run_selfplay(args)
-    else:
-        run_single(0, args)
+    run_selfplay(args)
 
 
 

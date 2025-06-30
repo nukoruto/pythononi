@@ -134,5 +134,5 @@ def print_stage(stage: Stage) -> None:
         print(''.join(chars[c] for c in row))
 
 if __name__ == "__main__":
-    s = generate_stage(31, 21)
+    s = generate_stage(31, 21, extra_wall_prob=10000)
     print_stage(s)
