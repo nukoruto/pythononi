@@ -128,6 +128,8 @@ class MultiTagEnv(gym.Env):
                 nige_reward = 1.0
             else:
                 nige_reward = 0.0
+        oni_reward *= self.speed_multiplier
+        nige_reward *= self.speed_multiplier
 
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
@@ -283,6 +285,7 @@ class TagEnv(gym.Env):
             reward = 1.0 + remain_ratio
         else:
             reward = -0.01
+        reward *= self.speed_multiplier
         self.last_reward = reward
         self.cumulative_reward += reward
         info = {}
