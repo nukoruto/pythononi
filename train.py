@@ -40,7 +40,10 @@ class RenderCallback(BaseCallback):
     def _on_step(self) -> bool:  # type: ignore[override]
         if hasattr(self.env, "training_end_time"):
             import time
-            self.env.remaining_time = max(0.0, self.env.training_end_time - time.time())
+            self.env.remaining_time = max(
+                0.0,
+                (self.env.training_end_time - time.time()) * getattr(self.env, "speed_multiplier", 1.0),
+            )
         if self.n_calls % self.render_interval == 0:
             self.env.render()
         return True
@@ -94,7 +97,6 @@ def run_selfplay(args: argparse.Namespace) -> None:
         import time
         scaled_duration = args.duration / args.speed_multiplier
         env.set_training_end_time(time.time() + scaled_duration)
-
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
