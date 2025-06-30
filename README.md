@@ -50,3 +50,41 @@ py train.py --episodes 1000 --render
 ## 旧 self-play スクリプト
 
 以前は `train_selfplay.py` を用いて同時学習を行っていましたが、`train.py` に統合したため基本的には使用不要です。残してありますが機能は同等です。
+
+## コマンドラインオプション一覧
+
+主要スクリプトで利用できる主なオプションを以下にまとめます。
+
+### `tag_game.py`
+
+| オプション | 説明 | デフォルト |
+|------------|------|-----------|
+| `--duration <秒>` | 1ゲームの制限時間 | 10.0 |
+
+### `train.py`
+
+| オプション | 説明 | デフォルト |
+|------------|------|-----------|
+| `--timesteps <int>` | 各エピソードの学習ステップ数 | 10000 |
+| `--oni-model <path>` | 鬼モデルの保存/読み込みパス | `oni_policy.zip` |
+| `--nige-model <path>` | 逃げモデルの保存/読み込みパス | `nige_policy.zip` |
+| `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
+| `--render` | 学習中に画面を描画 | - |
+| `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
+| `--duration <秒>` | 各エピソードの学習時間 | 10 |
+| `--episodes <int>` | 総エピソード数 | 10 |
+| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
+| `--num-envs <int>` | 並列環境数 | 1 |
+| `--mode {selfplay,alternate}` | 学習モード | `selfplay` |
+| `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
+| `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
+
+### `evaluate.py`
+
+| オプション | 説明 | デフォルト |
+|------------|------|-----------|
+| `--oni-model <path>` | 評価用鬼モデルのパス | `oni_policy.zip` |
+| `--nige-model <path>` | 評価用逃げモデルのパス | `nige_policy.zip` |
+| `--episodes <int>` | 評価エピソード数 | 10 |
+| `--render` | 描画を有効化 | - |
+| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
