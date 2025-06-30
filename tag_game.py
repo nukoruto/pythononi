@@ -1,6 +1,9 @@
 import math
 from typing import Tuple, List
 
+import argparse
+import time
+
 import pygame
 
 from stage_generator import generate_stage, Stage
@@ -9,6 +12,8 @@ import numpy as np
 
 CELL_SIZE = 20
 EXTRA_WALL_PROB = 0.1
+INFO_PANEL_HEIGHT = 40
+DEFAULT_DURATION = 10.0
 
 
 class StageMap:
@@ -145,18 +150,35 @@ def get_state(oni: Agent, nige: Agent) -> Tuple[List[float], List[float]]:
 
 
 def main():
+    parser = argparse.ArgumentParser(description="2D鬼ごっこデモ")
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=DEFAULT_DURATION,
+        help="ゲームの制限時間（秒）",
+    )
+    args = parser.parse_args()
+
     pygame.init()
     width, height = 31, 21
     stage = StageMap(width, height, extra_wall_prob=EXTRA_WALL_PROB)
 
-    screen = pygame.display.set_mode((width * CELL_SIZE, height * CELL_SIZE))
+    screen = pygame.display.set_mode(
+        (width * CELL_SIZE, height * CELL_SIZE + INFO_PANEL_HEIGHT)
+    )
     clock = pygame.time.Clock()
+    font = pygame.font.SysFont(None, 24)
+    start = time.time()
+    end_time = start + args.duration
 
     oni = Agent(1.5, 1.5, (255, 0, 0))
     nige = Agent(width - 2, height - 2, (0, 100, 255))
 
     running = True
     while running:
+        remaining = max(0.0, end_time - time.time())
+        if remaining <= 0:
+            break
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -178,26 +200,39 @@ def main():
         print(f"oni_state={oni_state} nige_state={nige_state}")
 
         screen.fill((0, 0, 0))
-        stage.draw(screen)
-        oni.draw(screen)
-        nige.draw(screen)
+        pygame.draw.rect(
+            screen,
+            (255, 255, 255),
+            pygame.Rect(0, 0, width * CELL_SIZE, INFO_PANEL_HEIGHT),
+        )
+        offset = (0, INFO_PANEL_HEIGHT)
+        stage.draw(screen, offset)
+        oni.draw(screen, offset)
+        nige.draw(screen, offset)
         pygame.draw.line(
             screen,
             (255, 0, 0),
             (
-                int(oni.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                int(oni.pos.y * CELL_SIZE + CELL_SIZE / 2),
+                int(oni.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
+                int(oni.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
             ),
             (
-                int(nige.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                int(nige.pos.y * CELL_SIZE + CELL_SIZE / 2),
+                int(nige.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
+                int(nige.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
             ),
             2,
         )
+        txt = font.render(f"残り{remaining:.1f}秒", True, (0, 0, 0))
+        screen.blit(txt, (10, 5))
         if oni.collides_with(nige):
             font = pygame.font.SysFont(None, 48)
             text = font.render("Caught!", True, (255, 0, 0))
-            rect = text.get_rect(center=(width * CELL_SIZE // 2, height * CELL_SIZE // 2))
+            rect = text.get_rect(
+                center=(
+                    width * CELL_SIZE // 2,
+                    height * CELL_SIZE // 2 + INFO_PANEL_HEIGHT // 2,
+                )
+            )
             screen.blit(text, rect)
             pygame.display.flip()
             pygame.time.wait(1000)
