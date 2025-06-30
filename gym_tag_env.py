@@ -1,7 +1,6 @@
 # coding: utf-8
 """Gym environment for the tag game."""
 import random
-from typing import Tuple, List
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -47,20 +46,21 @@ class MultiTagEnv(gym.Env):
         self.speed_multiplier = max(0.1, speed_multiplier)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
-        self.cumulative_reward = 0.0
-        self.last_reward = 0.0
-        self.remaining_time = 0.0
-        self.current_run = 0
-        self.total_runs = 1
-        self.training_end_time = None
-        self.cumulative_rewards = [0.0, 0.0]
-        self.last_rewards = (0.0, 0.0)
-        self.remaining_time = 0.0
-        self.current_run = 0
-        self.total_runs = 1
-        self.training_end_time = None
+        self.cumulative_reward: float = 0.0
+        self.last_reward: float = 0.0
+        self.cumulative_rewards: list[float] = [0.0, 0.0]
+        self.last_rewards: tuple[float, float] = (0.0, 0.0)
+        self.remaining_time: float = 0.0
+        self.current_run: int = 0
+        self.total_runs: int = 1
+        self.training_end_time: float | None = None
 
-    def reset(self, *, seed: int | None = None, options=None):
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict | None = None,
+    ) -> tuple[tuple[np.ndarray, np.ndarray], dict]:
         super().reset(seed=seed)
         if seed is not None:
             np.random.seed(seed)
@@ -82,7 +82,9 @@ class MultiTagEnv(gym.Env):
         )
         return obs, {}
 
-    def step(self, actions: Tuple[np.ndarray, np.ndarray]):
+    def step(
+        self, actions: tuple[np.ndarray, np.ndarray]
+    ) -> tuple[tuple[np.ndarray, np.ndarray], tuple[float, float], bool, bool, dict]:
         assert self.oni and self.nige and self.stage
         action_oni, action_nige = actions
         self.step_count += 1
@@ -116,7 +118,7 @@ class MultiTagEnv(gym.Env):
         info = {}
         return (oni_obs, nige_obs), (oni_reward, nige_reward), terminated, truncated, info
 
-    def render(self):
+    def render(self) -> None:
         if self.screen is None:
             pygame.init()
             self.screen = pygame.display.set_mode(
@@ -196,8 +198,19 @@ class TagEnv(gym.Env):
         self.speed_multiplier = max(0.1, speed_multiplier)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
+        self.cumulative_reward: float = 0.0
+        self.last_reward: float = 0.0
+        self.remaining_time: float = 0.0
+        self.current_run: int = 0
+        self.total_runs: int = 1
+        self.training_end_time: float | None = None
 
-    def reset(self, *, seed: int | None = None, options=None):
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict | None = None,
+    ) -> tuple[np.ndarray, dict]:
         super().reset(seed=seed)
         if seed is not None:
             np.random.seed(seed)
@@ -215,7 +228,7 @@ class TagEnv(gym.Env):
         self.last_reward = 0.0
         return np.array(self.oni.observe(self.nige), dtype=np.float32), {}
 
-    def step(self, action: np.ndarray):
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
         assert self.oni and self.nige and self.stage
         self.step_count += 1
         dx, dy = float(action[0]), float(action[1])
@@ -235,7 +248,7 @@ class TagEnv(gym.Env):
         info = {}
         return obs, reward, terminated, truncated, info
 
-    def render(self):
+    def render(self) -> None:
         if self.screen is None:
             pygame.init()
             self.screen = pygame.display.set_mode(
@@ -282,7 +295,7 @@ class TagEnv(gym.Env):
         if self.clock:
             self.clock.tick(60 * self.speed_multiplier)
 
-    def close(self):
+    def close(self) -> None:
         if self.screen:
             pygame.quit()
             self.screen = None
