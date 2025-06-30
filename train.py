@@ -83,16 +83,15 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
         env.nige_model = nige_model
 
     for ep in range(args.episodes):
-        train_oni = ep % 2 == 0
         if hasattr(env, "envs"):
             for e in env.envs:
-                e.set_training_agent("oni" if train_oni else "nige")
                 e.base_env.current_run = ep + 1
                 e.base_env.total_runs = args.episodes
         else:
-            env.set_training_agent("oni" if train_oni else "nige")
             env.base_env.current_run = ep + 1
             env.base_env.total_runs = args.episodes
+
+        train_oni = env.training_agent == "oni"
 
         callbacks: list[BaseCallback] = []
         if args.checkpoint_freq > 0:
@@ -117,6 +116,13 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
         model = oni_model if train_oni else nige_model
         while time.time() - start < args.duration:
             model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
+
+        # Start new episode and swap training agent automatically
+        if hasattr(env, "envs"):
+            for e in env.envs:
+                e.reset()
+        else:
+            env.reset()
 
     oni_model.save(oni_model_path)
     nige_model.save(nige_model_path)

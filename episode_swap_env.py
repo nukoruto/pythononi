@@ -30,6 +30,7 @@ class EpisodeSwapEnv(gym.Env):
             speed_multiplier=speed_multiplier,
         )
         self.training_agent = "oni"
+        self.episode_index = 0
         self.oni_model: Optional[PPO] = None
         self.nige_model: Optional[PPO] = None
         self.observation_space = self.base_env.action_space  # dummy, will reset in reset()
@@ -37,6 +38,7 @@ class EpisodeSwapEnv(gym.Env):
         self._last_obs: Tuple[np.ndarray, np.ndarray] | None = None
 
     def set_training_agent(self, agent: str) -> None:
+        """Manually override the agent trained in the next episode."""
         assert agent in ("oni", "nige")
         self.training_agent = agent
 
@@ -45,14 +47,13 @@ class EpisodeSwapEnv(gym.Env):
         return getattr(self.base_env, name)
 
     def reset(self, *, seed: int | None = None, options=None):
+        # Alternate training agent every episode automatically
+        self.training_agent = "oni" if self.episode_index % 2 == 0 else "nige"
+        self.episode_index += 1
         obs, info = self.base_env.reset(seed=seed, options=options)
         self._last_obs = obs
-        if self.training_agent == "oni":
-            self.observation_space = self.base_env.observation_space
-            return obs[0], info
-        else:
-            self.observation_space = self.base_env.observation_space
-            return obs[1], info
+        self.observation_space = self.base_env.observation_space
+        return (obs[0], info) if self.training_agent == "oni" else (obs[1], info)
 
     def step(self, action: np.ndarray):
         assert self._last_obs is not None
