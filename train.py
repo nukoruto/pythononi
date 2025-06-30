@@ -12,18 +12,16 @@ from stable_baselines3.common.env_util import make_vec_env
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train PPO agent for TagEnv")
-    parser.add_argument("--timesteps", type=int, default=10000, help="Training steps per run")
+    parser.add_argument("--timesteps", type=int, default=10000, help="Training steps per episode")
     parser.add_argument("--oni-model", type=str, default="oni_policy.zip", help="Path to save/load oni model")
     parser.add_argument("--nige-model", type=str, default="nige_policy.zip", help="Path to save/load nige model")
     parser.add_argument("--checkpoint-freq", type=int, default=0, help="Save checkpoints every N steps")
     parser.add_argument("--render", action="store_true", help="Render environment during training")
     parser.add_argument("--render-interval", type=int, default=1, help="Render every N steps when --render is set")
-    parser.add_argument("--duration", type=int, default=10, help="Training duration per run in seconds")
-    parser.add_argument("--runs", type=int, default=1, help="Number of runs to execute")
-    parser.add_argument("--episodes", type=int, default=10, help="Episodes per run")
-    parser.add_argument("--parallel", type=int, default=1, help="Number of concurrent runs")
+    parser.add_argument("--duration", type=int, default=10, help="Training duration per episode in seconds")
+    parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
-    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments per run")
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments")
     return parser.parse_args()
 
 
@@ -103,7 +101,7 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
                     name_prefix=f"{prefix}_checkpoint_{run_idx}_{ep}"
                 )
             )
-        if args.render and args.parallel == 1 and args.num_envs == 1:
+        if args.render and args.num_envs == 1:
             callbacks.append(RenderCallback(env, render_interval=args.render_interval))
 
         import time
@@ -131,23 +129,7 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
 
 def main():
     args = parse_args()
-
-    if args.parallel > 1:
-        from multiprocessing import Process
-        processes = []
-        for i in range(args.runs):
-            p = Process(target=run_single, args=(i, args))
-            p.start()
-            processes.append(p)
-            if len(processes) >= args.parallel:
-                for pr in processes:
-                    pr.join()
-                processes = []
-        for pr in processes:
-            pr.join()
-    else:
-        for i in range(args.runs):
-            run_single(i, args)
+    run_single(0, args)
 
 
 
