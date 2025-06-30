@@ -36,6 +36,14 @@ class EpisodeSwapEnv(gym.Env):
         self.action_space = self.base_env.action_space
         self._last_obs: tuple[np.ndarray, np.ndarray] | None = None
 
+    def set_run_info(self, current_run: int, total_runs: int) -> None:
+        """Set current episode index and total runs for rendering."""
+        self.base_env.set_run_info(current_run, total_runs)
+
+    def set_training_end_time(self, end_time: float | None) -> None:
+        """Set training end time used by the renderer."""
+        self.base_env.set_training_end_time(end_time)
+
     def set_training_agent(self, agent: str) -> None:
         """Manually override the agent trained in the next episode."""
         assert agent in ("oni", "nige")
