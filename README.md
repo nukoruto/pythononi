@@ -34,26 +34,19 @@ py tag_game.py
 pip install -r requirements.txt
 ```
 
-`train.py` では Stable-Baselines3 の PPO を用いた学習が行えます。
-学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを
-指定してください。
-描画時にはステップ数の代わりに残り時間や実行回数、
-鬼と逃げの累積報酬が画面上部に表示されます。
+`train.py` は 鬼と逃げを同時に学習する自作ポリシー勾配方式がデフォルトです。
+`--mode alternate` を指定すると Stable-Baselines3 を用いた交互学習に切り替えられます。
+学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
+描画時にはステップ数の代わりに残り時間や実行回数、鬼と逃げの累積報酬が画面上部に表示されます。
 
 ```bash
-py train.py --timesteps 50000 --render
+py train.py --episodes 1000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。`train.py` では内部で `EpisodeSwapEnv` を用いて 1 エピソードごとに鬼と逃げの学習対象を自動的に切り替えます。学習エピソード数は `--episodes` で指定できます。
-学習後、鬼側モデルは `oni_<run>.zip`、逃げ側モデルは `nige_<run>.zip` として保存されます。
+学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。交互学習モードでは `EpisodeSwapEnv` を利用し、鬼と逃げをエピソードごとに切り替えて学習します。
+学習後、鬼側モデルは `oni_selfplay.pth`、逃げ側モデルは `nige_selfplay.pth` として保存されます。
 
-## 同時学習
+## 旧 self-play スクリプト
 
-`train_selfplay.py` を使うと、鬼と逃げの両方を同じエピソードから同時に学習させる簡易的な自作ポリシー勾配による学習が行えます。Stable-Baselines3 は利用せず、PyTorch を用いた軽量実装です。
-
-```bash
-py train_selfplay.py --episodes 1000 --render
-```
-
-学習が終了すると `oni_selfplay.pth` と `nige_selfplay.pth` に各ポリシーの重みが保存されます。
+以前は `train_selfplay.py` を用いて同時学習を行っていましたが、`train.py` に統合したため基本的には使用不要です。残してありますが機能は同等です。
