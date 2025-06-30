@@ -90,6 +90,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
     nige_optim = optim.Adam(nige_policy.parameters(), lr=args.lr)
 
     for ep in range(1, args.episodes + 1):
+        env.set_run_info(ep, args.episodes)
+        import time
+        env.set_training_end_time(time.time() + args.duration)
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
