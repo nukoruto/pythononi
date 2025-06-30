@@ -92,7 +92,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
     for ep in range(1, args.episodes + 1):
         env.set_run_info(ep, args.episodes)
         import time
-        env.set_training_end_time(time.time() + args.duration)
+        scaled_duration = args.duration / args.speed_multiplier
+        env.set_training_end_time(time.time() + scaled_duration)
+
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
@@ -134,6 +136,75 @@ def run_selfplay(args: argparse.Namespace) -> None:
     torch.save(oni_policy.state_dict(), args.oni_model.replace('.zip', '_selfplay.pth'))
     torch.save(nige_policy.state_dict(), args.nige_model.replace('.zip', '_selfplay.pth'))
     env.close()
+
+
+def run_single(run_idx: int, args: argparse.Namespace) -> None:
+    """Alternate training between oni and nige each episode."""
+
+    env = _create_env(args)
+    oni_model_path = args.oni_model.replace(".zip", f"_{run_idx}.zip")
+    nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
+
+    if os.path.exists(args.oni_model) and run_idx == 0:
+        oni_model = PPO.load(args.oni_model, env=env)
+        print(f"Loaded oni model from {args.oni_model}")
+    else:
+        oni_model = PPO("MlpPolicy", env, verbose=1)
+
+    if os.path.exists(args.nige_model) and run_idx == 0:
+        nige_model = PPO.load(args.nige_model, env=env)
+        print(f"Loaded nige model from {args.nige_model}")
+    else:
+        nige_model = PPO("MlpPolicy", env, verbose=1)
+
+    if isinstance(env, VecEnv):
+        env.set_attr("oni_model", oni_model)
+        env.set_attr("nige_model", nige_model)
+    else:
+        env.oni_model = oni_model
+        env.nige_model = nige_model
+
+    for ep in range(args.episodes):
+        if isinstance(env, VecEnv):
+            env.env_method("set_run_info", ep + 1, args.episodes)
+            training_agents = env.get_attr("training_agent")
+            train_oni = training_agents[0] == "oni"
+        else:
+            env.set_run_info(ep + 1, args.episodes)
+            train_oni = env.training_agent == "oni"
+
+        callbacks: list[BaseCallback] = []
+        if args.checkpoint_freq > 0:
+            prefix = "oni" if train_oni else "nige"
+            callbacks.append(
+                CheckpointCallback(
+                    save_freq=args.checkpoint_freq,
+                    save_path=".",
+                    name_prefix=f"{prefix}_checkpoint_{run_idx}_{ep}"
+                )
+            )
+        if args.render and args.num_envs == 1:
+            callbacks.append(RenderCallback(env, render_interval=args.render_interval))
+
+        import time
+        start = time.time()
+        scaled_duration = args.duration / args.speed_multiplier
+        if isinstance(env, VecEnv):
+            env.env_method("set_training_end_time", start + scaled_duration)
+        else:
+            env.set_training_end_time(start + scaled_duration)
+        model = oni_model if train_oni else nige_model
+        while time.time() - start < scaled_duration:
+            model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
+
+        # Start new episode and swap training agent automatically
+        env.reset()
+
+    oni_model.save(oni_model_path)
+    nige_model.save(nige_model_path)
+    env.close()
+
+
 
 
 def main():

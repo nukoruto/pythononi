@@ -44,7 +44,7 @@ py train.py --episodes 1000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。
+学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間はその半分になります。交互学習モードでは `EpisodeSwapEnv` を利用し、鬼と逃げをエピソードごとに切り替えて学習します。
 学習後、鬼側モデルは `oni_selfplay.pth`、逃げ側モデルは `nige_selfplay.pth` として保存されます。
 
 ## 旧 self-play スクリプト
@@ -71,9 +71,9 @@ py train.py --episodes 1000 --render
 | `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
 | `--render` | 学習中に画面を描画 | - |
 | `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
-| `--duration <秒>` | 各エピソードの学習時間 | 10 |
+| `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
 | `--episodes <int>` | 総エピソード数 | 10 |
-| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
+| `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
 | `--num-envs <int>` | 並列環境数 | 1 |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
 | `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
