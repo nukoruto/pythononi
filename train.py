@@ -6,7 +6,7 @@ import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
-from gym_tag_env import TagEnv, MultiTagEnv
+from episode_swap_env import EpisodeSwapEnv
 
 
 def parse_args():
@@ -19,6 +19,7 @@ def parse_args():
     parser.add_argument("--render-interval", type=int, default=1, help="Render every N steps when --render is set")
     parser.add_argument("--duration", type=int, default=10, help="Training duration per run in seconds")
     parser.add_argument("--runs", type=int, default=1, help="Number of runs to execute")
+    parser.add_argument("--episodes", type=int, default=10, help="Episodes per run")
     parser.add_argument("--parallel", type=int, default=1, help="Number of concurrent runs")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
     return parser.parse_args()
@@ -42,88 +43,56 @@ class RenderCallback(BaseCallback):
 
 
 def run_single(run_idx: int, args: argparse.Namespace) -> None:
-    """Train oni first, then nige using the trained oni model."""
+    """Alternate training between oni and nige each episode."""
 
-    # --- train oni ---
-    oni_env = TagEnv(speed_multiplier=args.speed_multiplier)
-    oni_env.current_run = run_idx + 1
-    oni_env.total_runs = args.runs
+    env = EpisodeSwapEnv(speed_multiplier=args.speed_multiplier)
     oni_model_path = args.oni_model.replace(".zip", f"_{run_idx}.zip")
+    nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
+
     if os.path.exists(args.oni_model) and run_idx == 0:
-        oni_model = PPO.load(args.oni_model, env=oni_env)
+        oni_model = PPO.load(args.oni_model, env=env)
         print(f"Loaded oni model from {args.oni_model}")
     else:
-        oni_model = PPO("MlpPolicy", oni_env, verbose=1)
+        oni_model = PPO("MlpPolicy", env, verbose=1)
 
-    callbacks: list[BaseCallback] = []
-    if args.checkpoint_freq > 0:
-        callbacks.append(
-            CheckpointCallback(
-                save_freq=args.checkpoint_freq,
-                save_path=".",
-                name_prefix=f"oni_checkpoint_{run_idx}"
-            )
-        )
-    if args.render and args.parallel == 1:
-        callbacks.append(RenderCallback(oni_env, render_interval=args.render_interval))
-
-    import time
-    start = time.time()
-    oni_env.training_end_time = start + args.duration
-    while time.time() - start < args.duration:
-        oni_model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
-    oni_model.save(oni_model_path)
-    oni_env.close()
-
-    # --- train nige using fixed oni model ---
-    fixed_oni = PPO.load(oni_model_path, env=TagEnv())
-
-    class NigeEnv(gym.Env):
-        def __init__(self, model: PPO):
-            super().__init__()
-            self.env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
-            self.model = model
-            self.observation_space = self.env.observation_space
-            self.action_space = self.env.action_space
-            self._oni_obs = None
-
-        def reset(self, *, seed: int | None = None, options=None):
-            obs, _ = self.env.reset(seed=seed)
-            self._oni_obs = obs[0]
-            return obs[1], {}
-
-        def step(self, action):
-            oni_action, _ = self.model.predict(self._oni_obs, deterministic=True)
-            (oni_obs, nige_obs), (_, nige_reward), term, trunc, info = self.env.step((oni_action, action))
-            self._oni_obs = oni_obs
-            return nige_obs, nige_reward, term, trunc, info
-
-        def render(self):
-            self.env.render()
-
-        def close(self):
-            self.env.close()
-
-    nige_env = NigeEnv(fixed_oni)
-    nige_env.env.current_run = run_idx + 1
-    nige_env.env.total_runs = args.runs
-    nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
     if os.path.exists(args.nige_model) and run_idx == 0:
-        nige_model = PPO.load(args.nige_model, env=nige_env)
+        nige_model = PPO.load(args.nige_model, env=env)
         print(f"Loaded nige model from {args.nige_model}")
     else:
-        nige_model = PPO("MlpPolicy", nige_env, verbose=1)
+        nige_model = PPO("MlpPolicy", env, verbose=1)
 
-    callbacks = []
-    if args.render and args.parallel == 1:
-        callbacks.append(RenderCallback(nige_env, render_interval=args.render_interval))
+    env.oni_model = oni_model
+    env.nige_model = nige_model
 
-    start = time.time()
-    nige_env.env.training_end_time = start + args.duration
-    while time.time() - start < args.duration:
-        nige_model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
+    for ep in range(args.episodes):
+        train_oni = ep % 2 == 0
+        env.set_training_agent("oni" if train_oni else "nige")
+        env.base_env.current_run = ep + 1
+        env.base_env.total_runs = args.episodes
+
+        callbacks: list[BaseCallback] = []
+        if args.checkpoint_freq > 0:
+            prefix = "oni" if train_oni else "nige"
+            callbacks.append(
+                CheckpointCallback(
+                    save_freq=args.checkpoint_freq,
+                    save_path=".",
+                    name_prefix=f"{prefix}_checkpoint_{run_idx}_{ep}"
+                )
+            )
+        if args.render and args.parallel == 1:
+            callbacks.append(RenderCallback(env, render_interval=args.render_interval))
+
+        import time
+        start = time.time()
+        env.training_end_time = start + args.duration
+        model = oni_model if train_oni else nige_model
+        while time.time() - start < args.duration:
+            model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
+
+    oni_model.save(oni_model_path)
     nige_model.save(nige_model_path)
-    nige_env.close()
+    env.close()
 
 
 def main():
