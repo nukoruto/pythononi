@@ -44,7 +44,10 @@ class RenderCallback(BaseCallback):
     def _on_step(self) -> bool:  # type: ignore[override]
         if hasattr(self.env, "training_end_time"):
             import time
-            self.env.remaining_time = max(0.0, self.env.training_end_time - time.time())
+            self.env.remaining_time = max(
+                0.0,
+                (self.env.training_end_time - time.time()) * getattr(self.env, "speed_multiplier", 1.0),
+            )
         if self.n_calls % self.render_interval == 0:
             self.env.render()
         return True
@@ -102,6 +105,10 @@ def run_selfplay(args: argparse.Namespace) -> None:
     nige_optim = optim.Adam(nige_policy.parameters(), lr=args.lr)
 
     for ep in range(1, args.episodes + 1):
+        env.set_run_info(ep, args.episodes)
+        import time
+        scaled_duration = args.duration / args.speed_multiplier
+        env.set_training_end_time(time.time() + scaled_duration)
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
@@ -195,12 +202,13 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
 
         import time
         start = time.time()
+        scaled_duration = args.duration / args.speed_multiplier
         if isinstance(env, VecEnv):
-            env.env_method("set_training_end_time", start + args.duration)
+            env.env_method("set_training_end_time", start + scaled_duration)
         else:
-            env.set_training_end_time(start + args.duration)
+            env.set_training_end_time(start + scaled_duration)
         model = oni_model if train_oni else nige_model
-        while time.time() - start < args.duration:
+        while time.time() - start < scaled_duration:
             model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
 
         # Start new episode and swap training agent automatically

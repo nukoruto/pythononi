@@ -97,7 +97,10 @@ class MultiTagEnv(gym.Env):
         action_oni, action_nige = actions
         self.step_count += 1
         if self.training_end_time is not None:
-            self.remaining_time = max(0.0, self.training_end_time - time.time())
+            self.remaining_time = max(
+                0.0,
+                (self.training_end_time - time.time()) * self.speed_multiplier,
+            )
 
         odx, ody = float(action_oni[0]), float(action_oni[1])
         ndx, ndy = float(action_nige[0]), float(action_nige[1])
@@ -256,7 +259,10 @@ class TagEnv(gym.Env):
         assert self.oni and self.nige and self.stage
         self.step_count += 1
         if self.training_end_time is not None:
-            self.remaining_time = max(0.0, self.training_end_time - time.time())
+            self.remaining_time = max(
+                0.0,
+                (self.training_end_time - time.time()) * self.speed_multiplier,
+            )
         dx, dy = float(action[0]), float(action[1])
         self.oni.set_direction(dx, dy)
         # random policy for escapee
