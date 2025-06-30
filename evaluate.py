@@ -46,7 +46,10 @@ def main():
     nige_model = PPO.load(args.nige_model, env=env)
 
     rewards: List[Tuple[float, float]] = []
-    for _ in range(args.episodes):
+    for i in range(args.episodes):
+        env.current_run = i + 1
+        env.total_runs = args.episodes
+        env.remaining_time = 0.0
         rewards.append(run_episode(env, oni_model, nige_model, args.render))
 
     env.close()

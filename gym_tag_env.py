@@ -11,6 +11,8 @@ import pygame
 from stage_generator import generate_stage
 from tag_game import StageMap, Agent, CELL_SIZE
 
+INFO_PANEL_HEIGHT = 40
+
 
 class MultiTagEnv(gym.Env):
     """Two-agent version of :class:`TagEnv`.
@@ -45,6 +47,18 @@ class MultiTagEnv(gym.Env):
         self.speed_multiplier = max(0.1, speed_multiplier)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
+        self.cumulative_reward = 0.0
+        self.last_reward = 0.0
+        self.remaining_time = 0.0
+        self.current_run = 0
+        self.total_runs = 1
+        self.training_end_time = None
+        self.cumulative_rewards = [0.0, 0.0]
+        self.last_rewards = (0.0, 0.0)
+        self.remaining_time = 0.0
+        self.current_run = 0
+        self.total_runs = 1
+        self.training_end_time = None
 
     def reset(self, *, seed: int | None = None, options=None):
         super().reset(seed=seed)
@@ -60,6 +74,8 @@ class MultiTagEnv(gym.Env):
         self.oni = Agent(1.5, 1.5, (255, 0, 0))
         self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
         self.step_count = 0
+        self.cumulative_rewards = [0.0, 0.0]
+        self.last_rewards = (0.0, 0.0)
         obs = (
             np.array(self.oni.observe(self.nige), dtype=np.float32),
             np.array(self.nige.observe(self.oni), dtype=np.float32),
@@ -93,8 +109,58 @@ class MultiTagEnv(gym.Env):
         else:
             nige_reward = 0.0
 
+        self.last_rewards = (oni_reward, nige_reward)
+        self.cumulative_rewards[0] += oni_reward
+        self.cumulative_rewards[1] += nige_reward
+
         info = {}
         return (oni_obs, nige_obs), (oni_reward, nige_reward), terminated, truncated, info
+
+    def render(self):
+        if self.screen is None:
+            pygame.init()
+            self.screen = pygame.display.set_mode(
+                (self.width * CELL_SIZE, self.height * CELL_SIZE + INFO_PANEL_HEIGHT)
+            )
+            self.clock = pygame.time.Clock()
+        assert self.stage and self.oni and self.nige
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                self.screen = None
+                return
+        self.screen.fill((0, 0, 0))
+        offset = (0, INFO_PANEL_HEIGHT)
+        self.stage.draw(self.screen, offset)
+        self.oni.draw(self.screen, offset)
+        self.nige.draw(self.screen, offset)
+        pygame.draw.line(
+            self.screen,
+            (255, 0, 0),
+            (
+                int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
+                int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
+            ),
+            (
+                int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
+                int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
+            ),
+            2,
+        )
+        font = pygame.font.SysFont(None, 24)
+        txt_time = font.render(f"残り{self.remaining_time:.2f}秒", True, (0, 0, 0))
+        txt_run = font.render(f"{self.current_run}/{self.total_runs}回目", True, (0, 0, 0))
+        txt_reward = font.render(
+            f"鬼R:{self.cumulative_rewards[0]:.2f} 逃R:{self.cumulative_rewards[1]:.2f}",
+            True,
+            (0, 0, 0),
+        )
+        self.screen.blit(txt_time, (10, 5))
+        self.screen.blit(txt_run, (160, 5))
+        self.screen.blit(txt_reward, (10, 25))
+        pygame.display.flip()
+        if self.clock:
+            self.clock.tick(60 * self.speed_multiplier)
 
 
 
@@ -140,6 +206,8 @@ class TagEnv(gym.Env):
         self.oni = Agent(1.5, 1.5, (255, 0, 0))
         self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
         self.step_count = 0
+        self.cumulative_reward = 0.0
+        self.last_reward = 0.0
         return np.array(self.oni.observe(self.nige), dtype=np.float32), {}
 
     def step(self, action: np.ndarray):
@@ -157,13 +225,17 @@ class TagEnv(gym.Env):
         terminated = self.oni.collides_with(self.nige)
         truncated = self.step_count >= self.max_steps
         reward = 1.0 if terminated else -0.01
+        self.last_reward = reward
+        self.cumulative_reward += reward
         info = {}
         return obs, reward, terminated, truncated, info
 
     def render(self):
         if self.screen is None:
             pygame.init()
-            self.screen = pygame.display.set_mode((self.width * CELL_SIZE, self.height * CELL_SIZE))
+            self.screen = pygame.display.set_mode(
+                (self.width * CELL_SIZE, self.height * CELL_SIZE + INFO_PANEL_HEIGHT)
+            )
             self.clock = pygame.time.Clock()
         assert self.stage and self.oni and self.nige
         for event in pygame.event.get():
@@ -172,26 +244,30 @@ class TagEnv(gym.Env):
                 self.screen = None
                 return
         self.screen.fill((0, 0, 0))
-        self.stage.draw(self.screen)
-        self.oni.draw(self.screen)
-        self.nige.draw(self.screen)
+        offset = (0, INFO_PANEL_HEIGHT)
+        self.stage.draw(self.screen, offset)
+        self.oni.draw(self.screen, offset)
+        self.nige.draw(self.screen, offset)
         pygame.draw.line(
             self.screen,
             (255, 0, 0),
             (
-                int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2),
+                int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
+                int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
             ),
             (
-                int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2),
+                int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
+                int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
             ),
             2,
         )
-        # Display current step count
         font = pygame.font.SysFont(None, 24)
-        step_text = font.render(f"Step: {self.step_count}", True, (0, 0, 0))
-        self.screen.blit(step_text, (10, 10))
+        txt_time = font.render(f"残り{self.remaining_time:.2f}秒", True, (0, 0, 0))
+        txt_run = font.render(f"{self.current_run}/{self.total_runs}回目", True, (0, 0, 0))
+        txt_reward = font.render(f"鬼R:{self.cumulative_reward:.2f}", True, (0, 0, 0))
+        self.screen.blit(txt_time, (10, 5))
+        self.screen.blit(txt_run, (160, 5))
+        self.screen.blit(txt_reward, (10, 25))
         pygame.display.flip()
         if self.clock:
             self.clock.tick(60 * self.speed_multiplier)
