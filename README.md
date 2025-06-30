@@ -38,6 +38,7 @@ pip install -r requirements.txt
 `--mode alternate` を指定すると Stable-Baselines3 を用いた交互学習に切り替えられます。
 学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
 描画時にはステップ数の代わりに残り時間や実行回数、鬼と逃げの累積報酬が画面上部に表示されます。
+`train.py` では各エピソード開始時にこれらの値を自動設定するため、表示が常に最新の状態に保たれます。
 
 ```bash
 py train.py --episodes 1000 --render
