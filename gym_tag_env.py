@@ -130,6 +130,11 @@ class MultiTagEnv(gym.Env):
                 self.screen = None
                 return
         self.screen.fill((0, 0, 0))
+        pygame.draw.rect(
+            self.screen,
+            (255, 255, 255),
+            pygame.Rect(0, 0, self.width * CELL_SIZE, INFO_PANEL_HEIGHT),
+        )
         offset = (0, INFO_PANEL_HEIGHT)
         self.stage.draw(self.screen, offset)
         self.oni.draw(self.screen, offset)
@@ -244,6 +249,11 @@ class TagEnv(gym.Env):
                 self.screen = None
                 return
         self.screen.fill((0, 0, 0))
+        pygame.draw.rect(
+            self.screen,
+            (255, 255, 255),
+            pygame.Rect(0, 0, self.width * CELL_SIZE, INFO_PANEL_HEIGHT),
+        )
         offset = (0, INFO_PANEL_HEIGHT)
         self.stage.draw(self.screen, offset)
         self.oni.draw(self.screen, offset)
