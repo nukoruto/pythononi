@@ -46,8 +46,6 @@ class MultiTagEnv(gym.Env):
         self.speed_multiplier = max(0.1, speed_multiplier)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
-        self.cumulative_reward: float = 0.0
-        self.last_reward: float = 0.0
         self.cumulative_rewards: list[float] = [0.0, 0.0]
         self.last_rewards: tuple[float, float] = (0.0, 0.0)
         self.remaining_time: float = 0.0
@@ -201,8 +199,6 @@ class TagEnv(gym.Env):
         self.speed_multiplier = max(0.1, speed_multiplier)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
-        self.cumulative_reward: float = 0.0
-        self.last_reward: float = 0.0
         self.remaining_time: float = 0.0
         self.current_run: int = 0
         self.total_runs: int = 1
@@ -294,7 +290,6 @@ class TagEnv(gym.Env):
         font = pygame.font.SysFont(None, 24)
         txt_time = font.render(f"残り{self.remaining_time:.2f}秒", True, (0, 0, 0))
         txt_run = font.render(f"{self.current_run}/{self.total_runs}回目", True, (0, 0, 0))
-        txt_reward = font.render(f"鬼R:{self.cumulative_reward:.2f}", True, (0, 0, 0))
         self.screen.blit(txt_time, (10, 5))
         self.screen.blit(txt_run, (160, 5))
         self.screen.blit(txt_reward, (10, 25))
