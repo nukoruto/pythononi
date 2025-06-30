@@ -55,6 +55,15 @@ class MultiTagEnv(gym.Env):
         self.total_runs: int = 1
         self.training_end_time: float | None = None
 
+    def set_run_info(self, current_run: int, total_runs: int) -> None:
+        """Set current episode index and total runs for rendering."""
+        self.current_run = current_run
+        self.total_runs = total_runs
+
+    def set_training_end_time(self, end_time: float | None) -> None:
+        """Set training end time used by the renderer."""
+        self.training_end_time = end_time
+
     def reset(
         self,
         *,
@@ -204,6 +213,15 @@ class TagEnv(gym.Env):
         self.current_run: int = 0
         self.total_runs: int = 1
         self.training_end_time: float | None = None
+
+    def set_run_info(self, current_run: int, total_runs: int) -> None:
+        """Set current episode index and total runs for rendering."""
+        self.current_run = current_run
+        self.total_runs = total_runs
+
+    def set_training_end_time(self, end_time: float | None) -> None:
+        """Set training end time used by the renderer."""
+        self.training_end_time = end_time
 
     def reset(
         self,

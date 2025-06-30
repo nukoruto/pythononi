@@ -12,6 +12,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 from episode_swap_env import EpisodeSwapEnv
 from gym_tag_env import MultiTagEnv
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import VecEnv
 
 
 def parse_args():
@@ -163,24 +164,21 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
     else:
         nige_model = PPO("MlpPolicy", env, verbose=1)
 
-    if hasattr(env, "envs"):
-        for e in env.envs:
-            e.oni_model = oni_model
-            e.nige_model = nige_model
+    if isinstance(env, VecEnv):
+        env.set_attr("oni_model", oni_model)
+        env.set_attr("nige_model", nige_model)
     else:
         env.oni_model = oni_model
         env.nige_model = nige_model
 
     for ep in range(args.episodes):
-        if hasattr(env, "envs"):
-            for e in env.envs:
-                e.base_env.current_run = ep + 1
-                e.base_env.total_runs = args.episodes
+        if isinstance(env, VecEnv):
+            env.env_method("set_run_info", ep + 1, args.episodes)
+            training_agents = env.get_attr("training_agent")
+            train_oni = training_agents[0] == "oni"
         else:
-            env.base_env.current_run = ep + 1
-            env.base_env.total_runs = args.episodes
-
-        train_oni = env.training_agent == "oni"
+            env.set_run_info(ep + 1, args.episodes)
+            train_oni = env.training_agent == "oni"
 
         callbacks: list[BaseCallback] = []
         if args.checkpoint_freq > 0:
@@ -197,21 +195,16 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
 
         import time
         start = time.time()
-        if hasattr(env, "envs"):
-            for e in env.envs:
-                e.training_end_time = start + args.duration
+        if isinstance(env, VecEnv):
+            env.env_method("set_training_end_time", start + args.duration)
         else:
-            env.training_end_time = start + args.duration
+            env.set_training_end_time(start + args.duration)
         model = oni_model if train_oni else nige_model
         while time.time() - start < args.duration:
             model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
 
         # Start new episode and swap training agent automatically
-        if hasattr(env, "envs"):
-            for e in env.envs:
-                e.reset()
-        else:
-            env.reset()
+        env.reset()
 
     oni_model.save(oni_model_path)
     nige_model.save(nige_model_path)
