@@ -38,13 +38,15 @@ pip install -r requirements.txt
 `--mode alternate` を指定すると Stable-Baselines3 を用いた交互学習に切り替えられます。
 学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
 描画時にはステップ数の代わりに残り時間や実行回数、鬼と逃げの累積報酬が画面上部に表示されます。
+`train.py` では各エピソード開始時にこれらの値を自動設定するため、表示が常に最新の状態に保たれます。
 
 ```bash
 py train.py --episodes 1000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。交互学習モードでは `EpisodeSwapEnv` を利用し、鬼と逃げをエピソードごとに切り替えて学習します。
+学習時間を秒単位で制限したい場合は `--duration` を用います。`--num-envs` を指定すると1つの学習で複数環境を同時に利用できます。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。内部的には行動更新をこの倍率分だけ繰り返すため、値を大きくするほど高速に進行しますが、計算負荷によっては指定倍率通りにならないことがあります。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間はその半分になります。交互学習モードでは `EpisodeSwapEnv` を利用し、鬼と逃げをエピソードごとに切り替えて学習します。
+表示される残り時間も環境時間を基準としており、速度倍率が大きいほど実際の経過時間は短くなります。
 学習後、鬼側モデルは `oni_selfplay.pth`、逃げ側モデルは `nige_selfplay.pth` として保存されます。
 
 ## 旧 self-play スクリプト
@@ -71,9 +73,9 @@ py train.py --episodes 1000 --render
 | `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
 | `--render` | 学習中に画面を描画 | - |
 | `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
-| `--duration <秒>` | 各エピソードの学習時間 | 10 |
+| `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
 | `--episodes <int>` | 総エピソード数 | 10 |
-| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
+| `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
 | `--num-envs <int>` | 並列環境数 | 1 |
 | `--mode {selfplay,alternate}` | 学習モード | `selfplay` |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |

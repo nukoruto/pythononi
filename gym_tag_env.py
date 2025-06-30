@@ -97,15 +97,20 @@ class MultiTagEnv(gym.Env):
         action_oni, action_nige = actions
         self.step_count += 1
         if self.training_end_time is not None:
-            self.remaining_time = max(0.0, self.training_end_time - time.time())
+            self.remaining_time = max(
+                0.0,
+                (self.training_end_time - time.time()) * self.speed_multiplier,
+            )
 
         odx, ody = float(action_oni[0]), float(action_oni[1])
         ndx, ndy = float(action_nige[0]), float(action_nige[1])
         self.oni.set_direction(odx, ody)
         self.nige.set_direction(ndx, ndy)
 
-        self.oni.update(self.stage)
-        self.nige.update(self.stage)
+        updates = max(1, int(round(self.speed_multiplier)))
+        for _ in range(updates):
+            self.oni.update(self.stage)
+            self.nige.update(self.stage)
 
         oni_obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
         nige_obs = np.array(self.nige.observe(self.oni), dtype=np.float32)
@@ -256,14 +261,19 @@ class TagEnv(gym.Env):
         assert self.oni and self.nige and self.stage
         self.step_count += 1
         if self.training_end_time is not None:
-            self.remaining_time = max(0.0, self.training_end_time - time.time())
+            self.remaining_time = max(
+                0.0,
+                (self.training_end_time - time.time()) * self.speed_multiplier,
+            )
         dx, dy = float(action[0]), float(action[1])
         self.oni.set_direction(dx, dy)
         # random policy for escapee
         rnd = self.np_random.uniform(-1, 1, size=2)
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
-        self.oni.update(self.stage)
-        self.nige.update(self.stage)
+        updates = max(1, int(round(self.speed_multiplier)))
+        for _ in range(updates):
+            self.oni.update(self.stage)
+            self.nige.update(self.stage)
 
         obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
         terminated = self.oni.collides_with(self.nige)
