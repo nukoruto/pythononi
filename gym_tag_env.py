@@ -103,13 +103,16 @@ class MultiTagEnv(gym.Env):
         terminated = self.oni.collides_with(self.nige)
         truncated = self.step_count >= self.max_steps
 
-        oni_reward = 1.0 if terminated else -0.01
         if terminated:
-            nige_reward = -1.0
-        elif truncated:
-            nige_reward = 1.0
+            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            oni_reward = 1.0 + remain_ratio
+            nige_reward = -1.0 * (1.0 - self.step_count / self.max_steps)
         else:
-            nige_reward = 0.0
+            oni_reward = -0.01
+            if truncated:
+                nige_reward = 1.0
+            else:
+                nige_reward = 0.0
 
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
@@ -242,7 +245,11 @@ class TagEnv(gym.Env):
         obs = np.array(self.oni.observe(self.nige), dtype=np.float32)
         terminated = self.oni.collides_with(self.nige)
         truncated = self.step_count >= self.max_steps
-        reward = 1.0 if terminated else -0.01
+        if terminated:
+            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            reward = 1.0 + remain_ratio
+        else:
+            reward = -0.01
         self.last_reward = reward
         self.cumulative_reward += reward
         info = {}
