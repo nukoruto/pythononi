@@ -3,16 +3,16 @@ import os
 from typing import List, Tuple
 
 import numpy as np
-from stable_baselines3 import PPO
 import torch
+from train import Policy
 
 from gym_tag_env import MultiTagEnv
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate trained agents")
-    parser.add_argument("--oni-model", type=str, default="oni_policy.zip", help="Oni model path")
-    parser.add_argument("--nige-model", type=str, default="nige_policy.zip", help="Nige model path")
+    parser.add_argument("--oni-model", type=str, default="oni_selfplay.pth", help="Oni model path")
+    parser.add_argument("--nige-model", type=str, default="nige_selfplay.pth", help="Nige model path")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--render", action="store_true", help="Render environment")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
@@ -20,14 +20,26 @@ def parse_args():
     return parser.parse_args()
 
 
-def run_episode(env: MultiTagEnv, oni_model: PPO, nige_model: PPO, render: bool) -> Tuple[float, float]:
+def _select_action(policy: Policy, obs: np.ndarray, device: torch.device) -> np.ndarray:
+    with torch.no_grad():
+        mean, _ = policy(torch.tensor(obs, dtype=torch.float32, device=device))
+    return mean.cpu().numpy()
+
+
+def run_episode(
+    env: MultiTagEnv,
+    oni_model: Policy,
+    nige_model: Policy,
+    device: torch.device,
+    render: bool,
+) -> Tuple[float, float]:
     obs, _ = env.reset()
     oni_obs, nige_obs = obs
     done = False
     total_rewards = [0.0, 0.0]
     while not done:
-        oni_action, _ = oni_model.predict(oni_obs, deterministic=True)
-        nige_action, _ = nige_model.predict(nige_obs, deterministic=True)
+        oni_action = _select_action(oni_model, oni_obs, device)
+        nige_action = _select_action(nige_model, nige_obs, device)
         (oni_obs, nige_obs), (r_on, r_ni), terminated, truncated, _ = env.step((oni_action, nige_action))
         done = terminated or truncated
         total_rewards[0] += r_on
@@ -49,15 +61,19 @@ def main():
     print(f"Using device: {device}")
 
     env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
-    oni_model = PPO.load(args.oni_model, env=env, device=device)
-    nige_model = PPO.load(args.nige_model, env=env, device=device)
+    oni_model = Policy().to(device)
+    oni_model.load_state_dict(torch.load(args.oni_model, map_location=device))
+    oni_model.eval()
+    nige_model = Policy().to(device)
+    nige_model.load_state_dict(torch.load(args.nige_model, map_location=device))
+    nige_model.eval()
 
     rewards: List[Tuple[float, float]] = []
     for i in range(args.episodes):
         env.current_run = i + 1
         env.total_runs = args.episodes
         env.remaining_time = 0.0
-        rewards.append(run_episode(env, oni_model, nige_model, args.render))
+        rewards.append(run_episode(env, oni_model, nige_model, device, args.render))
 
     env.close()
     avg_oni = np.mean([r[0] for r in rewards])
