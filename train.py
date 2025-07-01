@@ -97,6 +97,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
     nige_optim = optim.Adam(nige_policy.parameters(), lr=args.lr)
 
+    oni_episode_rewards = []
+    nige_episode_rewards = []
+
     for ep in range(1, args.episodes + 1):
         env.set_run_info(ep, args.episodes)
         env.set_training_end_time(
@@ -157,8 +160,17 @@ def run_selfplay(args: argparse.Namespace) -> None:
         nige_loss.backward()
         nige_optim.step()
 
+        total_oni = sum(oni_rewards)
+        total_nige = sum(nige_rewards)
+        oni_episode_rewards.append(total_oni)
+        nige_episode_rewards.append(total_nige)
+
         if ep % 10 == 0:
-            print(f"episode {ep}: oniR={sum(oni_rewards):.2f} nigeR={sum(nige_rewards):.2f}")
+            avg_oni = sum(oni_episode_rewards[-10:]) / 10
+            avg_nige = sum(nige_episode_rewards[-10:]) / 10
+            print(
+                f"episode {ep}: average oniR={avg_oni:.2f} average nigeR={avg_nige:.2f}"
+            )
 
     oni_path = _next_output_path("out/oni", "out")
     nige_path = _next_output_path("out/nige", "nige")
