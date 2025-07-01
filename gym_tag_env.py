@@ -194,18 +194,11 @@ class MultiTagEnv(gym.Env):
         self.stage.draw(self.screen, offset)
         self.oni.draw(self.screen, offset)
         self.nige.draw(self.screen, offset)
-        pygame.draw.line(
+        self.stage.draw_shortest_path_vectors(
             self.screen,
-            (255, 0, 0),
-            (
-                int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
-                int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
-            ),
-            (
-                int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
-                int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
-            ),
-            2,
+            self.oni.pos,
+            self.nige.pos,
+            offset=offset,
         )
         font = pygame.font.SysFont(None, 24)
         txt_time = font.render(
@@ -378,18 +371,11 @@ class TagEnv(gym.Env):
         self.stage.draw(self.screen, offset)
         self.oni.draw(self.screen, offset)
         self.nige.draw(self.screen, offset)
-        pygame.draw.line(
+        self.stage.draw_shortest_path_vectors(
             self.screen,
-            (255, 0, 0),
-            (
-                int(self.oni.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
-                int(self.oni.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
-            ),
-            (
-                int(self.nige.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
-                int(self.nige.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
-            ),
-            2,
+            self.oni.pos,
+            self.nige.pos,
+            offset=offset,
         )
         font = pygame.font.SysFont(None, 24)
         txt_time = font.render(
