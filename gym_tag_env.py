@@ -152,9 +152,13 @@ class MultiTagEnv(gym.Env):
         truncated = truncated_by_steps or truncated_by_time
 
         if terminated:
-            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            remain_ratio = (
+                self.max_steps - self.physical_step_count
+            ) / self.max_steps
             oni_reward = 2.0 + remain_ratio
-            nige_reward = -2.0 * (1.0 - self.step_count / self.max_steps)
+            nige_reward = -2.0 * (
+                1.0 - self.physical_step_count / self.max_steps
+            )
 
         else:
             oni_reward = -0.005 + 0.01 * dist_delta
@@ -163,6 +167,12 @@ class MultiTagEnv(gym.Env):
             else:
                 nige_reward = 0.0
             nige_reward += 0.01 * (-dist_delta) + 0.002
+
+        # normalize rewards so that higher ``speed_multiplier`` does not
+        # artificially inflate the scale
+        scale = max(self.speed_multiplier, 1e-6)
+        oni_reward /= scale
+        nige_reward /= scale
 
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
@@ -327,6 +337,7 @@ class TagEnv(gym.Env):
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
+        self.physical_step_count += updates
         new_dist = self.oni.pos.distance_to(self.nige.pos)
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
@@ -339,10 +350,14 @@ class TagEnv(gym.Env):
         truncated_by_steps = self.physical_step_count >= self.max_steps
         truncated = truncated_by_steps or truncated_by_time
         if terminated:
-            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            remain_ratio = (
+                self.max_steps - self.physical_step_count
+            ) / self.max_steps
             reward = 2.0 + remain_ratio
         else:
             reward = -0.005 + 0.01 * dist_delta
+
+        reward /= max(self.speed_multiplier, 1e-6)
         self.last_reward = reward
         self.cumulative_reward += reward
         info = {}
