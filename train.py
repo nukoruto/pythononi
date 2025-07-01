@@ -80,8 +80,7 @@ def run_selfplay(args: argparse.Namespace) -> None:
         env.set_run_info(ep, args.episodes)
         import time
         scaled_duration = args.duration / args.speed_multiplier
-        start = time.time()
-        env.set_training_end_time(start + scaled_duration)
+        env.set_training_end_time(time.time() + scaled_duration)
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
@@ -89,7 +88,7 @@ def run_selfplay(args: argparse.Namespace) -> None:
         oni_rewards = []
         nige_rewards = []
         done = False
-        while not done and time.time() - start < scaled_duration:
+        while not done:
             oni_action, oni_logp = oni_policy.act(
                 torch.tensor(oni_obs, dtype=torch.float32, device=device)
             )
