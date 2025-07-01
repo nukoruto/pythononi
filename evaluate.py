@@ -61,10 +61,11 @@ def main():
     print(f"Using device: {device}")
 
     env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
-    oni_model = Policy().to(device)
+    input_dim = env.observation_space.shape[0]
+    oni_model = Policy(input_dim=input_dim).to(device)
     oni_model.load_state_dict(torch.load(args.oni_model, map_location=device))
     oni_model.eval()
-    nige_model = Policy().to(device)
+    nige_model = Policy(input_dim=input_dim).to(device)
     nige_model.load_state_dict(torch.load(args.nige_model, map_location=device))
     nige_model.eval()
 
