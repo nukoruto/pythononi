@@ -165,6 +165,28 @@ class StageMap:
         distance = len(path) - 1
         return direction, distance
 
+    def shortest_path_vectors(
+        self, start: pygame.Vector2, goal: pygame.Vector2
+    ) -> list[pygame.Vector2]:
+        """Return step vectors along the shortest path.
+
+        ``shortest_path`` で得られるセル座標列から、各ステップの方向ベクトル
+        (長さ1) を作成し、順番に並べたリストを返す。経路が存在しない場合は
+        空リストを返す。
+        """
+
+        path = self.shortest_path(start, goal)
+        if len(path) < 2:
+            return []
+
+        vectors: list[pygame.Vector2] = []
+        for (x0, y0), (x1, y1) in zip(path[:-1], path[1:]):
+            vec = pygame.Vector2(x1 - x0, y1 - y0)
+            if vec.length_squared() > 0:
+                vec = vec.normalize()
+            vectors.append(vec)
+        return vectors
+
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)

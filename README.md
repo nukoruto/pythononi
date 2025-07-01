@@ -26,6 +26,16 @@ py tag_game.py
 
 また、強化学習向けには `gym_tag_env.py` に `MultiTagEnv` クラスを実装しています。`reset()` でステージとエージェントを再初期化し、`step()` では鬼と逃げのアクションをタプルで与え、観測と報酬も `(鬼, 逃げ)` のタプルで返されます。初期位置は毎回ランダムに選ばれ、必要に応じて `start_distance_range` で互いの距離を制約できます。逃げ側の報酬は捕まったら `-1`、時間いっぱい逃げ切ったら `+1` です。
 
+`StageMap` クラスには壁を考慮した最短経路探索 `shortest_path` が用意されています。
+その経路を構成する方向ベクトル列を取得するには `shortest_path_vectors` を利用します。
+
+```python
+stage = StageMap(31, 21)
+start = pygame.Vector2(1, 1)
+goal = pygame.Vector2(10, 10)
+vectors = stage.shortest_path_vectors(start, goal)
+```
+
 ## 学習
 
 以下のコマンドで必要なライブラリをインストールしてください。
