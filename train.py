@@ -122,8 +122,8 @@ def run_selfplay(args: argparse.Namespace) -> None:
                 torch.tensor(nige_obs, dtype=torch.float32, device=device)
             )
             (oni_obs, nige_obs), (r_o, r_n), terminated, truncated, _ = env.step((
-                oni_action.detach().numpy(),
-                nige_action.detach().numpy(),
+                oni_action.detach().cpu().numpy(),
+                nige_action.detach().cpu().numpy(),
             ))
             if args.render:
                 env.render()
