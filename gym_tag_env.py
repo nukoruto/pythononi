@@ -30,6 +30,7 @@ class MultiTagEnv(gym.Env):
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
         speed_multiplier: float = 1.0,
+        start_distance_range: tuple[int, int] | None = None,
     ) -> None:
         super().__init__()
         self.width = width
@@ -55,6 +56,7 @@ class MultiTagEnv(gym.Env):
         self.current_run: int = 0
         self.total_runs: int = 1
         self.training_end_time: float | None = None
+        self.start_distance_range = start_distance_range
 
     def set_run_info(self, current_run: int, total_runs: int) -> None:
         """Set current episode index and total runs for rendering."""
@@ -81,8 +83,19 @@ class MultiTagEnv(gym.Env):
             extra_wall_prob=self.extra_wall_prob,
             rng=self.np_random,
         )
-        self.oni = Agent(1.5, 1.5, (255, 0, 0))
-        self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
+        oni_pos = self.stage.random_open_position()
+        nige_pos = self.stage.random_open_position()
+        if self.start_distance_range is not None:
+            min_d, max_d = self.start_distance_range
+            max_d = max_d or max(self.width, self.height)
+            d = oni_pos.distance_to(nige_pos)
+            tries = 0
+            while not (min_d <= d <= max_d) and tries < 100:
+                nige_pos = self.stage.random_open_position()
+                d = oni_pos.distance_to(nige_pos)
+                tries += 1
+        self.oni = Agent(oni_pos.x, oni_pos.y, (255, 0, 0))
+        self.nige = Agent(nige_pos.x, nige_pos.y, (0, 100, 255))
         self.step_count = 0
         self.physical_step_count = 0
         self.cumulative_rewards = [0.0, 0.0]
@@ -219,6 +232,7 @@ class TagEnv(gym.Env):
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
         speed_multiplier: float = 1.0,
+        start_distance_range: tuple[int, int] | None = None,
     ):
         super().__init__()
         self.width = width
@@ -242,6 +256,7 @@ class TagEnv(gym.Env):
         self.current_run: int = 0
         self.total_runs: int = 1
         self.training_end_time: float | None = None
+        self.start_distance_range = start_distance_range
 
     def set_run_info(self, current_run: int, total_runs: int) -> None:
         """Set current episode index and total runs for rendering."""
@@ -268,8 +283,19 @@ class TagEnv(gym.Env):
             extra_wall_prob=self.extra_wall_prob,
             rng=self.np_random,
         )
-        self.oni = Agent(1.5, 1.5, (255, 0, 0))
-        self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
+        oni_pos = self.stage.random_open_position()
+        nige_pos = self.stage.random_open_position()
+        if self.start_distance_range is not None:
+            min_d, max_d = self.start_distance_range
+            max_d = max_d or max(self.width, self.height)
+            d = oni_pos.distance_to(nige_pos)
+            tries = 0
+            while not (min_d <= d <= max_d) and tries < 100:
+                nige_pos = self.stage.random_open_position()
+                d = oni_pos.distance_to(nige_pos)
+                tries += 1
+        self.oni = Agent(oni_pos.x, oni_pos.y, (255, 0, 0))
+        self.nige = Agent(nige_pos.x, nige_pos.y, (0, 100, 255))
         self.step_count = 0
         self.physical_step_count = 0
         self.cumulative_reward = 0.0

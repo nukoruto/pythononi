@@ -38,6 +38,18 @@ class StageMap:
             return True
         return self.grid[y][x] == 1
 
+    def random_open_position(self) -> pygame.Vector2:
+        """Return a random free cell center as ``pygame.Vector2``."""
+        cells: list[tuple[int, int]] = []
+        for y in range(self.height):
+            for x in range(self.width):
+                if not self.is_wall(x, y):
+                    cells.append((x, y))
+        if not cells:
+            raise ValueError("stage has no open cells")
+        cx, cy = cells[int(self.rng.integers(0, len(cells)))]
+        return pygame.Vector2(cx + 0.5, cy + 0.5)
+
     def collides_circle(self, x: float, y: float, radius: float) -> bool:
         """Return True if a circle (in grid units) intersects a wall."""
         left = int(math.floor(x - radius))
