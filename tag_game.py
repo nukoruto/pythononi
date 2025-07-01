@@ -53,10 +53,11 @@ class StageMap:
                         return True
         return False
 
-    def shortest_path_direction(
+    def shortest_path(
         self, start: pygame.Vector2, goal: pygame.Vector2
-    ) -> pygame.Vector2:
-        """Return normalized direction of the first step on the shortest path.
+    ) -> list[tuple[int, int]]:
+        """Return cell coordinates from ``start`` to ``goal`` along the shortest
+        path.
 
         Parameters
         ----------
@@ -67,15 +68,15 @@ class StageMap:
 
         Returns
         -------
-        pygame.Vector2
-            最短経路上で最初に進むべき方向ベクトル。経路が存在しない
-            場合は長さ0のベクトルを返す。
+        list[tuple[int, int]]
+            ``start`` から ``goal`` までのセル座標列。経路が存在しない
+            場合は空リストを返す。
         """
 
         start_cell = (int(start.x), int(start.y))
         goal_cell = (int(goal.x), int(goal.y))
         if start_cell == goal_cell:
-            return pygame.Vector2(0, 0)
+            return [start_cell]
 
         from collections import deque
 
@@ -98,17 +99,33 @@ class StageMap:
                     queue.append((nx, ny))
 
         if goal_cell not in parents:
-            return pygame.Vector2(0, 0)
+            return []
 
-        # 最短経路を逆順にたどり、開始セルの次のセルを取得
+        # reconstruct path
+        path = [goal_cell]
         cur = goal_cell
-        while parents[cur] and parents[cur] != start_cell:
+        while parents[cur] is not None:
             cur = parents[cur]
-        if parents[cur] is None:
+            path.append(cur)
+        path.reverse()
+        return path
+
+    def shortest_path_direction(
+        self, start: pygame.Vector2, goal: pygame.Vector2
+    ) -> pygame.Vector2:
+        """Return normalized direction of the first step on the shortest path.
+
+        ``shortest_path`` を利用して ``start`` から ``goal`` までの経路を
+        求め、その最初の1歩分の方向ベクトルを返す。経路が存在しない
+        場合は長さ0のベクトルとなる。
+        """
+
+        path = self.shortest_path(start, goal)
+        if len(path) < 2:
             return pygame.Vector2(0, 0)
 
-        dx = cur[0] - start_cell[0]
-        dy = cur[1] - start_cell[1]
+        dx = path[1][0] - path[0][0]
+        dy = path[1][1] - path[0][1]
         direction = pygame.Vector2(dx, dy)
         if direction.length_squared() > 0:
             direction = direction.normalize()
