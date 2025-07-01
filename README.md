@@ -56,7 +56,7 @@ py train.py --episodes 1000 --render
 ```
 
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。環境の描画速度を調整する `--speed-multiplier` オプションも利用可能です。内部的には行動更新をこの倍率分だけ繰り返すため、値を大きくするほど高速に進行しますが、計算負荷によっては指定倍率通りにならないことがあります。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間は `duration / speed-multiplier` となります。
+学習時間を秒単位で制限したい場合は `--duration` を用います。物理更新の倍率は `--speed-multiplier`、描画フレームレートは `--render-speed` でそれぞれ制御できます。`--speed-multiplier` を大きくすると 1 ステップあたりの内部更新回数が増え、計算負荷によっては指定倍率通りにならないことがあります。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間は `duration / speed_multiplier` となります。
 学習処理は `run_selfplay` 関数として実装されており、保存したモデルは `evaluate.py` を通じて同じネットワーク構造で評価できます。
 
 学習後、鬼側モデルは `oni_selfplay.pth`、逃げ側モデルは `nige_selfplay.pth` として保存されます。
@@ -88,6 +88,7 @@ py train.py --episodes 1000 --render
 | `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
 | `--episodes <int>` | 総エピソード数 | 10 |
 | `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
+| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
 | `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
@@ -103,6 +104,7 @@ py train.py --episodes 1000 --render
 | `--episodes <int>` | 評価エピソード数 | 10 |
 | `--render` | 描画を有効化 | - |
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
+| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
 
 ## ライセンス

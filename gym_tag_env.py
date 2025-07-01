@@ -30,6 +30,7 @@ class MultiTagEnv(gym.Env):
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
         speed_multiplier: float = 1.0,
+        render_speed: float = 1.0,
         start_distance_range: tuple[int, int] | None = None,
     ) -> None:
         super().__init__()
@@ -48,6 +49,7 @@ class MultiTagEnv(gym.Env):
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
         self._updates_per_step = max(1, int(round(self.speed_multiplier)))
+        self.render_speed = max(0.1, render_speed)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self.cumulative_rewards: list[float] = [0.0, 0.0]
@@ -226,7 +228,7 @@ class MultiTagEnv(gym.Env):
         self.screen.blit(txt_reward, (10, 25))
         pygame.display.flip()
         if self.clock:
-            self.clock.tick(60 * self.speed_multiplier)
+            self.clock.tick(60 * self.render_speed)
 
 
 
@@ -240,6 +242,7 @@ class TagEnv(gym.Env):
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
         speed_multiplier: float = 1.0,
+        render_speed: float = 1.0,
         start_distance_range: tuple[int, int] | None = None,
     ):
         super().__init__()
@@ -258,6 +261,7 @@ class TagEnv(gym.Env):
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
         self._updates_per_step = max(1, int(round(self.speed_multiplier)))
+        self.render_speed = max(0.1, render_speed)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self.remaining_time: float = 0.0
@@ -411,7 +415,7 @@ class TagEnv(gym.Env):
         self.screen.blit(txt_reward, (10, 25))
         pygame.display.flip()
         if self.clock:
-            self.clock.tick(60 * self.speed_multiplier)
+            self.clock.tick(60 * self.render_speed)
 
     def close(self) -> None:
         if self.screen:
