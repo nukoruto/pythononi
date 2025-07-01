@@ -187,6 +187,50 @@ class StageMap:
             vectors.append(vec)
         return vectors
 
+    def draw_shortest_path_vectors(
+        self,
+        screen: pygame.Surface,
+        start: pygame.Vector2,
+        goal: pygame.Vector2,
+        *,
+        color: Tuple[int, int, int] = (0, 255, 0),
+        offset: Tuple[int, int] = (0, 0),
+    ) -> None:
+        """Draw the shortest path from ``start`` to ``goal``.
+
+        Parameters
+        ----------
+        screen : pygame.Surface
+            Surface to draw on.
+        start : pygame.Vector2
+            Starting position (world coordinates).
+        goal : pygame.Vector2
+            Goal position (world coordinates).
+        color : Tuple[int, int, int], optional
+            Line color, by default green.
+        offset : Tuple[int, int], optional
+            Pixel offset for drawing, by default ``(0, 0)``.
+        """
+
+        vectors = self.shortest_path_vectors(start, goal)
+        if not vectors:
+            return
+
+        off_x, off_y = offset
+        pos = pygame.Vector2(int(start.x) + 0.5, int(start.y) + 0.5)
+        prev_px = (
+            off_x + pos.x * CELL_SIZE,
+            off_y + pos.y * CELL_SIZE,
+        )
+        for vec in vectors:
+            pos += vec
+            next_px = (
+                off_x + pos.x * CELL_SIZE,
+                off_y + pos.y * CELL_SIZE,
+            )
+            pygame.draw.line(screen, color, prev_px, next_px, 2)
+            prev_px = next_px
+
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)
@@ -371,18 +415,8 @@ def main():
         stage.draw(screen, offset)
         oni.draw(screen, offset)
         nige.draw(screen, offset)
-        pygame.draw.line(
-            screen,
-            (255, 0, 0),
-            (
-                int(oni.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
-                int(oni.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
-            ),
-            (
-                int(nige.pos.x * CELL_SIZE + CELL_SIZE / 2) + offset[0],
-                int(nige.pos.y * CELL_SIZE + CELL_SIZE / 2) + offset[1],
-            ),
-            2,
+        stage.draw_shortest_path_vectors(
+            screen, oni.pos, nige.pos, offset=offset
         )
         txt = font.render(f"残り{remaining:.1f}秒", True, (0, 0, 0))
         screen.blit(txt, (10, 5))

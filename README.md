@@ -23,6 +23,8 @@ python3 stage_generator.py --width 31 --height 21
 ```bash
 py tag_game.py
 ```
+実行すると、鬼から逃げまでの経路が `shortest_path_vectors` を用いて計算され、
+壁を回避した最短経路が緑色の線で表示されます。
 
 また、強化学習向けには `gym_tag_env.py` に `MultiTagEnv` クラスを実装しています。`reset()` でステージとエージェントを再初期化し、`step()` では鬼と逃げのアクションをタプルで与え、観測と報酬も `(鬼, 逃げ)` のタプルで返されます。初期位置は毎回ランダムに選ばれ、必要に応じて `start_distance_range` で互いの距離を制約できます。逃げ側の報酬は捕まったら `-1`、時間いっぱい逃げ切ったら `+1` です。
 
