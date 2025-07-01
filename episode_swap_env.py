@@ -32,7 +32,8 @@ class EpisodeSwapEnv(gym.Env):
         self.episode_index = 0
         self.oni_model: Optional[PPO] = None
         self.nige_model: Optional[PPO] = None
-        self.observation_space = self.base_env.action_space  # dummy, will reset in reset()
+        # observation space is identical to the underlying environment
+        self.observation_space = self.base_env.observation_space
         self.action_space = self.base_env.action_space
         self._last_obs: tuple[np.ndarray, np.ndarray] | None = None
 
@@ -64,7 +65,6 @@ class EpisodeSwapEnv(gym.Env):
         self.episode_index += 1
         obs, info = self.base_env.reset(seed=seed, options=options)
         self._last_obs = obs
-        self.observation_space = self.base_env.observation_space
         return (obs[0], info) if self.training_agent == "oni" else (obs[1], info)
 
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
