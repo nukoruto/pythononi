@@ -131,7 +131,7 @@ class MultiTagEnv(gym.Env):
 
         _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
 
-        updates = max(1, int(round(self.speed_multiplier)))
+        updates = self._updates_per_step
 
         for _ in range(updates):
             self.oni.update(self.stage)
@@ -335,7 +335,7 @@ class TagEnv(gym.Env):
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
 
         _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
-        updates = max(1, int(round(self.speed_multiplier)))
+        updates = self._updates_per_step
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
