@@ -32,7 +32,7 @@ def _create_env(args: argparse.Namespace) -> MultiTagEnv:
     """Create :class:`MultiTagEnv` with the specified speed."""
     return MultiTagEnv(speed_multiplier=args.speed_multiplier)
 class Policy(nn.Module):
-    def __init__(self, input_dim: int = 2, hidden_dim: int = 64, output_dim: int = 2):
+    def __init__(self, input_dim: int = 3, hidden_dim: int = 64, output_dim: int = 2):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
@@ -71,8 +71,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
     print(f"Using device: {device}")
 
     env = _create_env(args)
-    oni_policy = Policy().to(device)
-    nige_policy = Policy().to(device)
+    input_dim = env.observation_space.shape[0]
+    oni_policy = Policy(input_dim=input_dim).to(device)
+    nige_policy = Policy(input_dim=input_dim).to(device)
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
     nige_optim = optim.Adam(nige_policy.parameters(), lr=args.lr)
 

@@ -39,8 +39,8 @@ class MultiTagEnv(gym.Env):
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
-        low = np.array([-width, -height], dtype=np.float32)
-        high = np.array([width, height], dtype=np.float32)
+        low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
+        high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
@@ -228,8 +228,8 @@ class TagEnv(gym.Env):
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
-        low = np.array([-width, -height], dtype=np.float32)
-        high = np.array([width, height], dtype=np.float32)
+        low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
+        high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
