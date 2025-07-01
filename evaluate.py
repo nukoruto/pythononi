@@ -16,6 +16,7 @@ def parse_args():
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--render", action="store_true", help="Render environment")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
+    parser.add_argument("--render-speed", type=float, default=1.0, help="Rendering speed multiplier")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
     return parser.parse_args()
 
@@ -60,7 +61,10 @@ def main():
         print("GPU is not available. Falling back to CPU.")
     print(f"Using device: {device}")
 
-    env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
+    env = MultiTagEnv(
+        speed_multiplier=args.speed_multiplier,
+        render_speed=args.render_speed,
+    )
     input_dim = env.observation_space.shape[0]
     oni_model = Policy(input_dim=input_dim).to(device)
     oni_model.load_state_dict(torch.load(args.oni_model, map_location=device))

@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--duration", type=int, default=10, help="Training duration per episode in seconds")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
+    parser.add_argument("--render-speed", type=float, default=1.0, help="Rendering speed multiplier")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor for self-play")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate for self-play")
     parser.add_argument("--entropy-coeff", type=float, default=0.01, help="Entropy regularization coefficient")
@@ -33,7 +34,10 @@ def parse_args():
 
 def _create_env(args: argparse.Namespace) -> MultiTagEnv:
     """Create :class:`MultiTagEnv` with the specified speed."""
-    return MultiTagEnv(speed_multiplier=args.speed_multiplier)
+    return MultiTagEnv(
+        speed_multiplier=args.speed_multiplier,
+        render_speed=args.render_speed,
+    )
 class Policy(nn.Module):
     def __init__(self, input_dim: int = 3, hidden_dim: int = 64, output_dim: int = 2):
         super().__init__()
