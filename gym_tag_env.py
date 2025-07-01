@@ -40,8 +40,8 @@ class MultiTagEnv(gym.Env):
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
-        low = np.array([-width, -height], dtype=np.float32)
-        high = np.array([width, height], dtype=np.float32)
+        low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
+        high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
@@ -100,6 +100,7 @@ class MultiTagEnv(gym.Env):
         self.physical_step_count = 0
         self.cumulative_rewards = [0.0, 0.0]
         self.last_rewards = (0.0, 0.0)
+        self.prev_distance = self.oni.pos.distance_to(self.nige.pos)
         obs = (
             np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
             np.array(self.nige.observe(self.oni, self.stage), dtype=np.float32),
@@ -126,11 +127,18 @@ class MultiTagEnv(gym.Env):
         self.oni.set_direction(odx, ody)
         self.nige.set_direction(ndx, ndy)
 
-        updates = self._updates_per_step
+        prev_dist = self.oni.pos.distance_to(self.nige.pos)
+
+        updates = max(1, int(round(self.speed_multiplier)))
+
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
         self.physical_step_count += updates
+
+        new_dist = self.oni.pos.distance_to(self.nige.pos)
+        self.prev_distance = new_dist
+        dist_delta = prev_dist - new_dist
 
         oni_obs = np.array(
             self.oni.observe(self.nige, self.stage), dtype=np.float32
@@ -144,19 +152,17 @@ class MultiTagEnv(gym.Env):
         truncated = truncated_by_steps or truncated_by_time
 
         if terminated:
-            remain_ratio = (
-                self.max_steps - self.physical_step_count
-            ) / self.max_steps
-            oni_reward = 1.0 + remain_ratio
-            nige_reward = -1.0 * (
-                1.0 - self.physical_step_count / self.max_steps
-            )
+            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            oni_reward = 2.0 + remain_ratio
+            nige_reward = -2.0 * (1.0 - self.step_count / self.max_steps)
+
         else:
-            oni_reward = -0.01
+            oni_reward = -0.005 + 0.01 * dist_delta
             if truncated:
                 nige_reward = 1.0
             else:
                 nige_reward = 0.0
+            nige_reward += 0.01 * (-dist_delta) + 0.002
 
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
@@ -242,8 +248,8 @@ class TagEnv(gym.Env):
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
-        low = np.array([-width, -height], dtype=np.float32)
-        high = np.array([width, height], dtype=np.float32)
+        low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
+        high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
@@ -300,6 +306,7 @@ class TagEnv(gym.Env):
         self.physical_step_count = 0
         self.cumulative_reward = 0.0
         self.last_reward = 0.0
+        self.prev_distance = self.oni.pos.distance_to(self.nige.pos)
         return (
             np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
             {},
@@ -321,11 +328,16 @@ class TagEnv(gym.Env):
         # random policy for escapee
         rnd = self.np_random.uniform(-1, 1, size=2)
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
-        updates = self._updates_per_step
+
+        prev_dist = self.oni.pos.distance_to(self.nige.pos)
+        updates = max(1, int(round(self.speed_multiplier)))
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
-        self.physical_step_count += updates
+        new_dist = self.oni.pos.distance_to(self.nige.pos)
+        self.prev_distance = new_dist
+        dist_delta = prev_dist - new_dist
+
 
         obs = np.array(
             self.oni.observe(self.nige, self.stage), dtype=np.float32
@@ -334,12 +346,10 @@ class TagEnv(gym.Env):
         truncated_by_steps = self.physical_step_count >= self.max_steps
         truncated = truncated_by_steps or truncated_by_time
         if terminated:
-            remain_ratio = (
-                self.max_steps - self.physical_step_count
-            ) / self.max_steps
-            reward = 1.0 + remain_ratio
+            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            reward = 2.0 + remain_ratio
         else:
-            reward = -0.01
+            reward = -0.005 + 0.01 * dist_delta
         self.last_reward = reward
         self.cumulative_reward += reward
         info = {}

@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor for self-play")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate for self-play")
+    parser.add_argument("--entropy-coeff", type=float, default=0.01, help="Entropy regularization coefficient")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
     return parser.parse_args()
 
@@ -32,7 +33,7 @@ def _create_env(args: argparse.Namespace) -> MultiTagEnv:
     """Create :class:`MultiTagEnv` with the specified speed."""
     return MultiTagEnv(speed_multiplier=args.speed_multiplier)
 class Policy(nn.Module):
-    def __init__(self, input_dim: int = 2, hidden_dim: int = 64, output_dim: int = 2):
+    def __init__(self, input_dim: int = 3, hidden_dim: int = 64, output_dim: int = 2):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
@@ -52,7 +53,8 @@ class Policy(nn.Module):
         dist = torch.distributions.Normal(mean, std)
         action = dist.rsample()
         log_prob = dist.log_prob(action).sum(dim=-1)
-        return action, log_prob
+        entropy = dist.entropy().sum(dim=-1)
+        return action, log_prob, entropy
 
 
 def compute_returns(rewards, gamma: float):
@@ -71,8 +73,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
     print(f"Using device: {device}")
 
     env = _create_env(args)
-    oni_policy = Policy().to(device)
-    nige_policy = Policy().to(device)
+    input_dim = env.observation_space.shape[0]
+    oni_policy = Policy(input_dim=input_dim).to(device)
+    nige_policy = Policy(input_dim=input_dim).to(device)
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
     nige_optim = optim.Adam(nige_policy.parameters(), lr=args.lr)
 
@@ -82,15 +85,17 @@ def run_selfplay(args: argparse.Namespace) -> None:
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
+        oni_entropies = []
         nige_log_probs = []
+        nige_entropies = []
         oni_rewards = []
         nige_rewards = []
         done = False
         while not done:
-            oni_action, oni_logp = oni_policy.act(
+            oni_action, oni_logp, oni_ent = oni_policy.act(
                 torch.tensor(oni_obs, dtype=torch.float32, device=device)
             )
-            nige_action, nige_logp = nige_policy.act(
+            nige_action, nige_logp, nige_ent = nige_policy.act(
                 torch.tensor(nige_obs, dtype=torch.float32, device=device)
             )
             (oni_obs, nige_obs), (r_o, r_n), terminated, truncated, _ = env.step((
@@ -100,7 +105,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
             if args.render:
                 env.render()
             oni_log_probs.append(oni_logp)
+            oni_entropies.append(oni_ent)
             nige_log_probs.append(nige_logp)
+            nige_entropies.append(nige_ent)
             oni_rewards.append(r_o)
             nige_rewards.append(r_n)
             done = terminated or truncated
@@ -111,8 +118,16 @@ def run_selfplay(args: argparse.Namespace) -> None:
         nige_returns = torch.tensor(
             compute_returns(nige_rewards, args.gamma), dtype=torch.float32, device=device
         )
-        oni_loss = -(torch.stack(oni_log_probs) * oni_returns).sum()
-        nige_loss = -(torch.stack(nige_log_probs) * nige_returns).sum()
+        oni_entropy = torch.stack(oni_entropies)
+        nige_entropy = torch.stack(nige_entropies)
+        oni_loss = (
+            -(torch.stack(oni_log_probs) * oni_returns).sum()
+            - args.entropy_coeff * oni_entropy.sum()
+        )
+        nige_loss = (
+            -(torch.stack(nige_log_probs) * nige_returns).sum()
+            - args.entropy_coeff * nige_entropy.sum()
+        )
 
         oni_optim.zero_grad()
         oni_loss.backward()

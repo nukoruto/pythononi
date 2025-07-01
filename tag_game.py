@@ -143,6 +143,28 @@ class StageMap:
             direction = direction.normalize()
         return direction
 
+    def shortest_path_info(
+        self, start: pygame.Vector2, goal: pygame.Vector2
+    ) -> tuple[pygame.Vector2, int]:
+        """Return direction and path length from ``start`` to ``goal``.
+
+        経路が存在しない場合は方向ベクトル(0,0)と距離0を返す。"""
+
+        path = self.shortest_path(start, goal)
+        if not path:
+            return pygame.Vector2(0, 0), 0
+
+        if len(path) < 2:
+            direction = pygame.Vector2(0, 0)
+        else:
+            dx = path[1][0] - path[0][0]
+            dy = path[1][1] - path[0][1]
+            direction = pygame.Vector2(dx, dy)
+            if direction.length_squared() > 0:
+                direction = direction.normalize()
+        distance = len(path) - 1
+        return direction, distance
+
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)
@@ -253,10 +275,13 @@ class Agent:
 
         if stage is None:
             diff = other.pos - self.pos
-            return [diff.x, diff.y]
+            distance = diff.length()
+            return [diff.x, diff.y, distance]
 
-        direction = stage.shortest_path_direction(self.pos, other.pos)
-        return [direction.x, direction.y]
+        direction, length = stage.shortest_path_info(self.pos, other.pos)
+        max_dist = stage.width + stage.height
+        dist_norm = min(length / max_dist, 1.0)
+        return [direction.x, direction.y, dist_norm]
 
 
 def get_state(
