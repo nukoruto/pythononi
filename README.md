@@ -104,3 +104,7 @@ py train.py --episodes 1000 --render
 | `--render` | 描画を有効化 | - |
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
+
+## ライセンス
+
+このプロジェクトは [MIT License](LICENSE) のもとで公開されています。
