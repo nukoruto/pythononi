@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 
 import gymnasium as gym
 import torch
@@ -64,6 +65,22 @@ def compute_returns(rewards, gamma: float):
         R = r + gamma * R
         returns.insert(0, R)
     return returns
+
+
+def _next_output_path(base_dir: str, prefix: str) -> str:
+    """Return next sequential path like ``prefix_N.pth`` under ``base_dir``."""
+    os.makedirs(base_dir, exist_ok=True)
+    max_idx = 0
+    for name in os.listdir(base_dir):
+        if name.startswith(f"{prefix}_") and name.endswith(".pth"):
+            m = re.search(rf"{prefix}_(\d+)\.pth", name)
+            if m:
+                try:
+                    idx = int(m.group(1))
+                    max_idx = max(max_idx, idx)
+                except ValueError:
+                    continue
+    return os.path.join(base_dir, f"{prefix}_{max_idx + 1}.pth")
 
 
 def run_selfplay(args: argparse.Namespace) -> None:
@@ -140,8 +157,10 @@ def run_selfplay(args: argparse.Namespace) -> None:
         if ep % 10 == 0:
             print(f"episode {ep}: oniR={sum(oni_rewards):.2f} nigeR={sum(nige_rewards):.2f}")
 
-    torch.save(oni_policy.state_dict(), args.oni_model.replace('.zip', '_selfplay.pth'))
-    torch.save(nige_policy.state_dict(), args.nige_model.replace('.zip', '_selfplay.pth'))
+    oni_path = _next_output_path("out/oni", "out")
+    nige_path = _next_output_path("out/nige", "nige")
+    torch.save(oni_policy.state_dict(), oni_path)
+    torch.save(nige_policy.state_dict(), nige_path)
     env.close()
 
 def main():
