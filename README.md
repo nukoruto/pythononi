@@ -81,12 +81,14 @@ py train.py --episodes 1000 --render
 | `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
 
+学習済み `.pth` ファイルを読み込み、`train.py` と同じ `Policy` ネットワークで行動を計算します。
+
 ### `evaluate.py`
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--oni-model <path>` | 評価用鬼モデルのパス | `oni_policy.zip` |
-| `--nige-model <path>` | 評価用逃げモデルのパス | `nige_policy.zip` |
+| `--oni-model <path>` | 評価用鬼モデルのパス | `oni_selfplay.pth` |
+| `--nige-model <path>` | 評価用逃げモデルのパス | `nige_selfplay.pth` |
 | `--episodes <int>` | 評価エピソード数 | 10 |
 | `--render` | 描画を有効化 | - |
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
