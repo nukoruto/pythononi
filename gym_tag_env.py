@@ -3,6 +3,8 @@
 import random
 import time
 
+BASE_DT = 1.0 / 60.0
+
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
@@ -48,6 +50,7 @@ class MultiTagEnv(gym.Env):
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
         self._updates_per_step = max(1, int(round(self.speed_multiplier)))
+        self.base_dt = BASE_DT
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self.cumulative_rewards: list[float] = [0.0, 0.0]
@@ -131,12 +134,13 @@ class MultiTagEnv(gym.Env):
 
         _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
 
-        updates = max(1, int(round(self.speed_multiplier)))
-
+        updates = self._updates_per_step
+        start_t = time.time()
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
         self.physical_step_count += updates
+        elapsed = time.time() - start_t
 
         _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
         self.prev_distance = new_dist
@@ -174,6 +178,9 @@ class MultiTagEnv(gym.Env):
         # reward is computed for ``updates`` physical steps so that the
         # total reward does not shrink when ``speed_multiplier`` is large
 
+        time_scale = elapsed / (updates * self.base_dt)
+        oni_reward *= time_scale
+        nige_reward *= time_scale
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
         self.cumulative_rewards[1] += nige_reward
@@ -259,6 +266,7 @@ class TagEnv(gym.Env):
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
         self._updates_per_step = max(1, int(round(self.speed_multiplier)))
+        self.base_dt = BASE_DT
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self.remaining_time: float = 0.0
@@ -335,11 +343,13 @@ class TagEnv(gym.Env):
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
 
         _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
-        updates = max(1, int(round(self.speed_multiplier)))
+        updates = self._updates_per_step
+        start_t = time.time()
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
         self.physical_step_count += updates
+        elapsed = time.time() - start_t
         _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
@@ -361,6 +371,8 @@ class TagEnv(gym.Env):
             reward = -0.005 * updates + 0.01 * dist_delta
 
         # reward reflects ``updates`` physical steps
+        time_scale = elapsed / (updates * self.base_dt)
+        reward *= time_scale
         self.last_reward = reward
         self.cumulative_reward += reward
         info = {}
