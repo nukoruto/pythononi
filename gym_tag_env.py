@@ -44,7 +44,9 @@ class MultiTagEnv(gym.Env):
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
+        self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
+        self._updates_per_step = max(1, int(round(self.speed_multiplier)))
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self.cumulative_rewards: list[float] = [0.0, 0.0]
@@ -82,6 +84,7 @@ class MultiTagEnv(gym.Env):
         self.oni = Agent(1.5, 1.5, (255, 0, 0))
         self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
         self.step_count = 0
+        self.physical_step_count = 0
         self.cumulative_rewards = [0.0, 0.0]
         self.last_rewards = (0.0, 0.0)
         obs = (
@@ -110,10 +113,11 @@ class MultiTagEnv(gym.Env):
         self.oni.set_direction(odx, ody)
         self.nige.set_direction(ndx, ndy)
 
-        updates = max(1, int(round(self.speed_multiplier)))
+        updates = self._updates_per_step
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
+        self.physical_step_count += updates
 
         oni_obs = np.array(
             self.oni.observe(self.nige, self.stage), dtype=np.float32
@@ -123,12 +127,17 @@ class MultiTagEnv(gym.Env):
         )
 
         terminated = self.oni.collides_with(self.nige)
-        truncated = self.step_count >= self.max_steps or truncated_by_time
+        truncated_by_steps = self.physical_step_count >= self.max_steps
+        truncated = truncated_by_steps or truncated_by_time
 
         if terminated:
-            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            remain_ratio = (
+                self.max_steps - self.physical_step_count
+            ) / self.max_steps
             oni_reward = 1.0 + remain_ratio
-            nige_reward = -1.0 * (1.0 - self.step_count / self.max_steps)
+            nige_reward = -1.0 * (
+                1.0 - self.physical_step_count / self.max_steps
+            )
         else:
             oni_reward = -0.01
             if truncated:
@@ -224,7 +233,9 @@ class TagEnv(gym.Env):
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
+        self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
+        self._updates_per_step = max(1, int(round(self.speed_multiplier)))
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
         self.remaining_time: float = 0.0
@@ -260,6 +271,7 @@ class TagEnv(gym.Env):
         self.oni = Agent(1.5, 1.5, (255, 0, 0))
         self.nige = Agent(self.width - 2, self.height - 2, (0, 100, 255))
         self.step_count = 0
+        self.physical_step_count = 0
         self.cumulative_reward = 0.0
         self.last_reward = 0.0
         return (
@@ -283,18 +295,22 @@ class TagEnv(gym.Env):
         # random policy for escapee
         rnd = self.np_random.uniform(-1, 1, size=2)
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
-        updates = max(1, int(round(self.speed_multiplier)))
+        updates = self._updates_per_step
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
+        self.physical_step_count += updates
 
         obs = np.array(
             self.oni.observe(self.nige, self.stage), dtype=np.float32
         )
         terminated = self.oni.collides_with(self.nige)
-        truncated = self.step_count >= self.max_steps or truncated_by_time
+        truncated_by_steps = self.physical_step_count >= self.max_steps
+        truncated = truncated_by_steps or truncated_by_time
         if terminated:
-            remain_ratio = (self.max_steps - self.step_count) / self.max_steps
+            remain_ratio = (
+                self.max_steps - self.physical_step_count
+            ) / self.max_steps
             reward = 1.0 + remain_ratio
         else:
             reward = -0.01
