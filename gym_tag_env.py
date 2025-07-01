@@ -162,18 +162,15 @@ class MultiTagEnv(gym.Env):
             )
 
         else:
-            oni_reward = -0.005 + 0.01 * dist_delta
+            oni_reward = -0.005 * updates + 0.01 * dist_delta
             if truncated:
                 nige_reward = 1.0
             else:
                 nige_reward = 0.0
-            nige_reward += 0.01 * (-dist_delta) + 0.002
+            nige_reward += 0.01 * (-dist_delta) + 0.002 * updates
 
-        # normalize rewards so that higher ``speed_multiplier`` does not
-        # artificially inflate the scale
-        scale = max(self.speed_multiplier, 1e-6)
-        oni_reward /= scale
-        nige_reward /= scale
+        # reward is computed for ``updates`` physical steps so that the
+        # total reward does not shrink when ``speed_multiplier`` is large
 
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
@@ -357,9 +354,9 @@ class TagEnv(gym.Env):
             ) / self.max_steps
             reward = 2.0 + remain_ratio
         else:
-            reward = -0.005 + 0.01 * dist_delta
+            reward = -0.005 * updates + 0.01 * dist_delta
 
-        reward /= max(self.speed_multiplier, 1e-6)
+        # reward reflects ``updates`` physical steps
         self.last_reward = reward
         self.cumulative_reward += reward
         info = {}
