@@ -148,7 +148,8 @@ class MultiTagEnv(gym.Env):
         )
 
         terminated = self.oni.collides_with(self.nige)
-        truncated_by_steps = self.physical_step_count >= self.max_steps
+        use_step_limit = self.training_end_time is None
+        truncated_by_steps = use_step_limit and self.physical_step_count >= self.max_steps
         truncated = truncated_by_steps or truncated_by_time
 
         if terminated:
@@ -336,7 +337,8 @@ class TagEnv(gym.Env):
             self.oni.observe(self.nige, self.stage), dtype=np.float32
         )
         terminated = self.oni.collides_with(self.nige)
-        truncated_by_steps = self.physical_step_count >= self.max_steps
+        use_step_limit = self.training_end_time is None
+        truncated_by_steps = use_step_limit and self.physical_step_count >= self.max_steps
         truncated = truncated_by_steps or truncated_by_time
         if terminated:
             remain_ratio = (self.max_steps - self.step_count) / self.max_steps
