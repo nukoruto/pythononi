@@ -26,6 +26,7 @@ def parse_args():
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor for self-play")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate for self-play")
+    parser.add_argument("--g", action="store_true", help="Use GPU if available")
     return parser.parse_args()
 
 
@@ -86,9 +87,14 @@ def compute_returns(rewards, gamma: float):
 
 
 def run_selfplay(args: argparse.Namespace) -> None:
+    device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
+    if args.g and device.type != "cuda":
+        print("GPU is not available. Falling back to CPU.")
+    print(f"Using device: {device}")
+
     env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
-    oni_policy = Policy()
-    nige_policy = Policy()
+    oni_policy = Policy().to(device)
+    nige_policy = Policy().to(device)
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
     nige_optim = optim.Adam(nige_policy.parameters(), lr=args.lr)
 
@@ -106,8 +112,12 @@ def run_selfplay(args: argparse.Namespace) -> None:
         nige_rewards = []
         done = False
         while not done and time.time() - start < scaled_duration:
-            oni_action, oni_logp = oni_policy.act(torch.tensor(oni_obs, dtype=torch.float32))
-            nige_action, nige_logp = nige_policy.act(torch.tensor(nige_obs, dtype=torch.float32))
+            oni_action, oni_logp = oni_policy.act(
+                torch.tensor(oni_obs, dtype=torch.float32, device=device)
+            )
+            nige_action, nige_logp = nige_policy.act(
+                torch.tensor(nige_obs, dtype=torch.float32, device=device)
+            )
             (oni_obs, nige_obs), (r_o, r_n), terminated, truncated, _ = env.step((
                 oni_action.detach().numpy(),
                 nige_action.detach().numpy(),
@@ -120,8 +130,12 @@ def run_selfplay(args: argparse.Namespace) -> None:
             nige_rewards.append(r_n)
             done = terminated or truncated
 
-        oni_returns = torch.tensor(compute_returns(oni_rewards, args.gamma), dtype=torch.float32)
-        nige_returns = torch.tensor(compute_returns(nige_rewards, args.gamma), dtype=torch.float32)
+        oni_returns = torch.tensor(
+            compute_returns(oni_rewards, args.gamma), dtype=torch.float32, device=device
+        )
+        nige_returns = torch.tensor(
+            compute_returns(nige_rewards, args.gamma), dtype=torch.float32, device=device
+        )
         oni_loss = -(torch.stack(oni_log_probs) * oni_returns).sum()
         nige_loss = -(torch.stack(nige_log_probs) * nige_returns).sum()
 
@@ -145,20 +159,24 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
     """Alternate training between oni and nige each episode."""
 
     env = _create_env(args)
+    device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
+    if args.g and device.type != "cuda":
+        print("GPU is not available. Falling back to CPU.")
+    print(f"Using device: {device}")
     oni_model_path = args.oni_model.replace(".zip", f"_{run_idx}.zip")
     nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
 
     if os.path.exists(args.oni_model) and run_idx == 0:
-        oni_model = PPO.load(args.oni_model, env=env)
+        oni_model = PPO.load(args.oni_model, env=env, device=device)
         print(f"Loaded oni model from {args.oni_model}")
     else:
-        oni_model = PPO("MlpPolicy", env, verbose=1)
+        oni_model = PPO("MlpPolicy", env, verbose=1, device=device)
 
     if os.path.exists(args.nige_model) and run_idx == 0:
-        nige_model = PPO.load(args.nige_model, env=env)
+        nige_model = PPO.load(args.nige_model, env=env, device=device)
         print(f"Loaded nige model from {args.nige_model}")
     else:
-        nige_model = PPO("MlpPolicy", env, verbose=1)
+        nige_model = PPO("MlpPolicy", env, verbose=1, device=device)
 
     if isinstance(env, VecEnv):
         env.set_attr("oni_model", oni_model)
