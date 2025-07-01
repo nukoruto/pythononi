@@ -70,9 +70,8 @@ def main():
 
     rewards: List[Tuple[float, float]] = []
     for i in range(args.episodes):
-        env.current_run = i + 1
-        env.total_runs = args.episodes
-        env.remaining_time = 0.0
+        env.set_run_info(i + 1, args.episodes)
+        env.set_training_end_time(None)
         rewards.append(run_episode(env, oni_model, nige_model, device, args.render))
 
     env.close()
