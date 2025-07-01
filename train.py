@@ -23,7 +23,6 @@ def parse_args():
     parser.add_argument("--duration", type=int, default=10, help="Training duration per episode in seconds")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
-    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor for self-play")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate for self-play")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
@@ -204,7 +203,7 @@ def run_single(run_idx: int, args: argparse.Namespace) -> None:
                     name_prefix=f"{prefix}_checkpoint_{run_idx}_{ep}"
                 )
             )
-        if args.render and args.num_envs == 1:
+        if args.render:
             callbacks.append(RenderCallback(env, render_interval=args.render_interval))
 
         import time
