@@ -7,14 +7,14 @@
 ## ステージ生成
 
 ```bash
-python3 stage_generator.py
+python3 stage_generator.py --width 31 --height 21
 ```
 
 実行すると固定サイズ（例: 31x21）のステージが標準出力に表示されます。
 `generate_stage` 関数に幅・高さを指定することで別サイズのステージも生成可能です。
 ステージには行き止まりが存在せず、孤立したエリアも生じないよう接続性を保ったまま生成されます。道幅はランダムで広げられます。
-壁密度を高めたい場合は `generate_stage(width, height, extra_wall_prob=0.1)` のように
-`extra_wall_prob` を指定してください。
+壁密度を高めたい場合は `--extra-wall-prob` オプションで値を指定します。デフォルトは
+`0.1` です。
 
 ## 鬼ごっこ環境
 

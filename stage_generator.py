@@ -134,5 +134,22 @@ def print_stage(stage: Stage) -> None:
         print(''.join(chars[c] for c in row))
 
 if __name__ == "__main__":
-    s = generate_stage(31, 21, extra_wall_prob=10000)
-    print_stage(s)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate and print a random stage")
+    parser.add_argument("--width", type=int, default=31, help="Stage width (odd number)")
+    parser.add_argument("--height", type=int, default=21, help="Stage height (odd number)")
+    parser.add_argument(
+        "--extra-wall-prob",
+        type=float,
+        default=0.1,
+        help="Probability of adding extra walls after maze generation",
+    )
+    args = parser.parse_args()
+
+    stage = generate_stage(
+        args.width,
+        args.height,
+        extra_wall_prob=args.extra_wall_prob,
+    )
+    print_stage(stage)
