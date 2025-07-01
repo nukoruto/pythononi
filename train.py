@@ -8,6 +8,8 @@ import torch.optim as optim
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
+from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
+from typing import Any, Optional
 
 from gym_tag_env import MultiTagEnv
 
@@ -27,6 +29,73 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate for self-play")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
     return parser.parse_args()
+
+
+def _create_env(args: argparse.Namespace) -> gym.Env:
+    """Create MultiTagEnv or vectorized environments based on args."""
+
+    def _make_env() -> MultiTagEnv:
+        return MultiTagEnv(speed_multiplier=args.speed_multiplier)
+
+    if args.num_envs > 1:
+        return DummyVecEnv([_make_env for _ in range(args.num_envs)])
+    return _make_env()
+
+
+class EpisodeSwapWrapper(gym.Env):
+    """Wrap :class:`MultiTagEnv` for alternating training of agents."""
+
+    metadata = {"render_modes": ["human"]}
+
+    def __init__(self, env: MultiTagEnv) -> None:
+        super().__init__()
+        self.base_env = env
+        self.training_agent = "oni"
+        self.episode_index = 0
+        self.oni_model: Optional[PPO] = None
+        self.nige_model: Optional[PPO] = None
+        self.observation_space = env.action_space  # dummy, will reset in reset()
+        self.action_space = env.action_space
+        self._last_obs: tuple[Any, Any] | None = None
+
+    # delegate unknown attributes to base_env
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.base_env, name)
+
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        self.training_agent = "oni" if self.episode_index % 2 == 0 else "nige"
+        self.episode_index += 1
+        obs, info = self.base_env.reset(seed=seed, options=options)
+        self._last_obs = obs
+        self.observation_space = self.base_env.observation_space
+        return (obs[0], info) if self.training_agent == "oni" else (obs[1], info)
+
+    def step(self, action):
+        assert self._last_obs is not None
+        if self.training_agent == "oni":
+            oni_action = action
+            if self.nige_model is not None:
+                nige_action, _ = self.nige_model.predict(self._last_obs[1], deterministic=True)
+            else:
+                nige_action = self.base_env.action_space.sample()
+        else:
+            nige_action = action
+            if self.oni_model is not None:
+                oni_action, _ = self.oni_model.predict(self._last_obs[0], deterministic=True)
+            else:
+                oni_action = self.base_env.action_space.sample()
+        obs, rewards, terminated, truncated, info = self.base_env.step((oni_action, nige_action))
+        self._last_obs = obs
+        if self.training_agent == "oni":
+            return obs[0], rewards[0], terminated, truncated, info
+        else:
+            return obs[1], rewards[1], terminated, truncated, info
+
+    def render(self):
+        self.base_env.render()
+
+    def close(self):
+        self.base_env.close()
 
 
 class RenderCallback(BaseCallback):
@@ -91,7 +160,10 @@ def run_selfplay(args: argparse.Namespace) -> None:
         print("GPU is not available. Falling back to CPU.")
     print(f"Using device: {device}")
 
-    env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
+    env = _create_env(args)
+    if isinstance(env, VecEnv):
+        print("Self-play does not support multiple environments; using the first one.")
+        env = env.envs[0]
     oni_policy = Policy().to(device)
     nige_policy = Policy().to(device)
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
@@ -157,7 +229,11 @@ def run_selfplay(args: argparse.Namespace) -> None:
 def run_single(run_idx: int, args: argparse.Namespace) -> None:
     """Alternate training between oni and nige each episode."""
 
-    env = _create_env(args)
+    base_env = _create_env(args)
+    if isinstance(base_env, VecEnv):
+        print("run_single does not support multiple environments; using the first one.")
+        base_env = base_env.envs[0]
+    env = EpisodeSwapWrapper(base_env)
     device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
     if args.g and device.type != "cuda":
         print("GPU is not available. Falling back to CPU.")
