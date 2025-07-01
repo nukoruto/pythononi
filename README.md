@@ -79,6 +79,7 @@ py train.py --episodes 1000 --render
 | `--num-envs <int>` | 並列環境数 | 1 |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
 | `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
+| `--g` | GPU を利用する(利用可能な場合) | - |
 
 ### `evaluate.py`
 
@@ -89,3 +90,4 @@ py train.py --episodes 1000 --render
 | `--episodes <int>` | 評価エピソード数 | 10 |
 | `--render` | 描画を有効化 | - |
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
+| `--g` | GPU を利用する(利用可能な場合) | - |

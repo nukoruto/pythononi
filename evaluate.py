@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import numpy as np
 from stable_baselines3 import PPO
+import torch
 
 from gym_tag_env import MultiTagEnv
 
@@ -15,6 +16,7 @@ def parse_args():
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--render", action="store_true", help="Render environment")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
+    parser.add_argument("--g", action="store_true", help="Use GPU if available")
     return parser.parse_args()
 
 
@@ -41,9 +43,14 @@ def main():
         raise FileNotFoundError(f"Model not found: {args.oni_model}")
     if not os.path.exists(args.nige_model):
         raise FileNotFoundError(f"Model not found: {args.nige_model}")
+    device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
+    if args.g and device.type != "cuda":
+        print("GPU is not available. Falling back to CPU.")
+    print(f"Using device: {device}")
+
     env = MultiTagEnv(speed_multiplier=args.speed_multiplier)
-    oni_model = PPO.load(args.oni_model, env=env)
-    nige_model = PPO.load(args.nige_model, env=env)
+    oni_model = PPO.load(args.oni_model, env=env, device=device)
+    nige_model = PPO.load(args.nige_model, env=env, device=device)
 
     rewards: List[Tuple[float, float]] = []
     for i in range(args.episodes):
