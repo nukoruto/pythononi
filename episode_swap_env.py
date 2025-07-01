@@ -4,8 +4,8 @@ import gymnasium as gym
 import numpy as np
 
 from gym_tag_env import MultiTagEnv
-from stable_baselines3 import PPO
-
+import torch
+import torch.nn as nn
 
 class EpisodeSwapEnv(gym.Env):
     """Wrapper that trains oni and nige alternately per episode."""
@@ -30,8 +30,8 @@ class EpisodeSwapEnv(gym.Env):
         )
         self.training_agent = "oni"
         self.episode_index = 0
-        self.oni_model: Optional[PPO] = None
-        self.nige_model: Optional[PPO] = None
+        self.oni_model: Optional[nn.Module] = None
+        self.nige_model: Optional[nn.Module] = None
         # observation space is identical to the underlying environment
         self.observation_space = self.base_env.observation_space
         self.action_space = self.base_env.action_space
@@ -74,13 +74,23 @@ class EpisodeSwapEnv(gym.Env):
         if self.training_agent == "oni":
             oni_action = action
             if self.nige_model is not None:
-                nige_action, _ = self.nige_model.predict(self._last_obs[1], deterministic=True)
+                with torch.no_grad():
+                    if hasattr(self.nige_model, "act"):
+                        a, _ = self.nige_model.act(torch.tensor(self._last_obs[1], dtype=torch.float32))
+                    else:
+                        a = self.nige_model(torch.tensor(self._last_obs[1], dtype=torch.float32))
+                nige_action = a.detach().cpu().numpy()
             else:
                 nige_action = self.base_env.action_space.sample()
         else:
             nige_action = action
             if self.oni_model is not None:
-                oni_action, _ = self.oni_model.predict(self._last_obs[0], deterministic=True)
+                with torch.no_grad():
+                    if hasattr(self.oni_model, "act"):
+                        a, _ = self.oni_model.act(torch.tensor(self._last_obs[0], dtype=torch.float32))
+                    else:
+                        a = self.oni_model(torch.tensor(self._last_obs[0], dtype=torch.float32))
+                oni_action = a.detach().cpu().numpy()
             else:
                 oni_action = self.base_env.action_space.sample()
         obs, rewards, terminated, truncated, info = self.base_env.step((oni_action, nige_action))

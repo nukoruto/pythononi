@@ -6,16 +6,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
-from stable_baselines3.common.vec_env import DummyVecEnv, VecEnv
 from typing import Any, Optional
 
 from gym_tag_env import MultiTagEnv
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train PPO agent for TagEnv")
+    parser = argparse.ArgumentParser(description="Train agents for TagEnv")
     parser.add_argument("--timesteps", type=int, default=10000, help="Training steps per episode")
     parser.add_argument("--oni-model", type=str, default="oni_policy.zip", help="Path to save/load oni model")
     parser.add_argument("--nige-model", type=str, default="nige_policy.zip", help="Path to save/load nige model")
@@ -31,96 +28,9 @@ def parse_args():
     return parser.parse_args()
 
 
-def _create_env(args: argparse.Namespace) -> gym.Env:
-    """Create MultiTagEnv or vectorized environments based on args."""
-
-    def _make_env() -> MultiTagEnv:
-        return MultiTagEnv(speed_multiplier=args.speed_multiplier)
-
-    if args.num_envs > 1:
-        return DummyVecEnv([_make_env for _ in range(args.num_envs)])
-    return _make_env()
-
-
-class EpisodeSwapWrapper(gym.Env):
-    """Wrap :class:`MultiTagEnv` for alternating training of agents."""
-
-    metadata = {"render_modes": ["human"]}
-
-    def __init__(self, env: MultiTagEnv) -> None:
-        super().__init__()
-        self.base_env = env
-        self.training_agent = "oni"
-        self.episode_index = 0
-        self.oni_model: Optional[PPO] = None
-        self.nige_model: Optional[PPO] = None
-        self.observation_space = env.action_space  # dummy, will reset in reset()
-        self.action_space = env.action_space
-        self._last_obs: tuple[Any, Any] | None = None
-
-    # delegate unknown attributes to base_env
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self.base_env, name)
-
-    def reset(self, *, seed: int | None = None, options: dict | None = None):
-        self.training_agent = "oni" if self.episode_index % 2 == 0 else "nige"
-        self.episode_index += 1
-        obs, info = self.base_env.reset(seed=seed, options=options)
-        self._last_obs = obs
-        self.observation_space = self.base_env.observation_space
-        return (obs[0], info) if self.training_agent == "oni" else (obs[1], info)
-
-    def step(self, action):
-        assert self._last_obs is not None
-        if self.training_agent == "oni":
-            oni_action = action
-            if self.nige_model is not None:
-                nige_action, _ = self.nige_model.predict(self._last_obs[1], deterministic=True)
-            else:
-                nige_action = self.base_env.action_space.sample()
-        else:
-            nige_action = action
-            if self.oni_model is not None:
-                oni_action, _ = self.oni_model.predict(self._last_obs[0], deterministic=True)
-            else:
-                oni_action = self.base_env.action_space.sample()
-        obs, rewards, terminated, truncated, info = self.base_env.step((oni_action, nige_action))
-        self._last_obs = obs
-        if self.training_agent == "oni":
-            return obs[0], rewards[0], terminated, truncated, info
-        else:
-            return obs[1], rewards[1], terminated, truncated, info
-
-    def render(self):
-        self.base_env.render()
-
-    def close(self):
-        self.base_env.close()
-
-
-class RenderCallback(BaseCallback):
-    """Render environment during training if ``--render`` is specified."""
-
-    def __init__(self, env: gym.Env, render_interval: int = 1, verbose: int = 0):
-        super().__init__(verbose)
-        self.env = env
-        self.render_interval = max(1, render_interval)
-
-    def _on_step(self) -> bool:  # type: ignore[override]
-        if hasattr(self.env, "training_end_time"):
-            import time
-            self.env.remaining_time = max(
-                0.0,
-                (self.env.training_end_time - time.time()) * getattr(self.env, "speed_multiplier", 1.0),
-            )
-        if self.n_calls % self.render_interval == 0:
-            self.env.render()
-        return True
-
-
-
-
-
+def _create_env(args: argparse.Namespace) -> MultiTagEnv:
+    """Create :class:`MultiTagEnv` with the specified speed."""
+    return MultiTagEnv(speed_multiplier=args.speed_multiplier)
 class Policy(nn.Module):
     def __init__(self, input_dim: int = 2, hidden_dim: int = 64, output_dim: int = 2):
         super().__init__()
@@ -161,9 +71,6 @@ def run_selfplay(args: argparse.Namespace) -> None:
     print(f"Using device: {device}")
 
     env = _create_env(args)
-    if isinstance(env, VecEnv):
-        print("Self-play does not support multiple environments; using the first one.")
-        env = env.envs[0]
     oni_policy = Policy().to(device)
     nige_policy = Policy().to(device)
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
@@ -224,84 +131,6 @@ def run_selfplay(args: argparse.Namespace) -> None:
     torch.save(oni_policy.state_dict(), args.oni_model.replace('.zip', '_selfplay.pth'))
     torch.save(nige_policy.state_dict(), args.nige_model.replace('.zip', '_selfplay.pth'))
     env.close()
-
-
-def run_single(run_idx: int, args: argparse.Namespace) -> None:
-    """Alternate training between oni and nige each episode."""
-
-    base_env = _create_env(args)
-    if isinstance(base_env, VecEnv):
-        print("run_single does not support multiple environments; using the first one.")
-        base_env = base_env.envs[0]
-    env = EpisodeSwapWrapper(base_env)
-    device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
-    if args.g and device.type != "cuda":
-        print("GPU is not available. Falling back to CPU.")
-    print(f"Using device: {device}")
-    oni_model_path = args.oni_model.replace(".zip", f"_{run_idx}.zip")
-    nige_model_path = args.nige_model.replace(".zip", f"_{run_idx}.zip")
-
-    if os.path.exists(args.oni_model) and run_idx == 0:
-        oni_model = PPO.load(args.oni_model, env=env, device=device)
-        print(f"Loaded oni model from {args.oni_model}")
-    else:
-        oni_model = PPO("MlpPolicy", env, verbose=1, device=device)
-
-    if os.path.exists(args.nige_model) and run_idx == 0:
-        nige_model = PPO.load(args.nige_model, env=env, device=device)
-        print(f"Loaded nige model from {args.nige_model}")
-    else:
-        nige_model = PPO("MlpPolicy", env, verbose=1, device=device)
-
-    if isinstance(env, VecEnv):
-        env.set_attr("oni_model", oni_model)
-        env.set_attr("nige_model", nige_model)
-    else:
-        env.oni_model = oni_model
-        env.nige_model = nige_model
-
-    for ep in range(args.episodes):
-        if isinstance(env, VecEnv):
-            env.env_method("set_run_info", ep + 1, args.episodes)
-            training_agents = env.get_attr("training_agent")
-            train_oni = training_agents[0] == "oni"
-        else:
-            env.set_run_info(ep + 1, args.episodes)
-            train_oni = env.training_agent == "oni"
-
-        callbacks: list[BaseCallback] = []
-        if args.checkpoint_freq > 0:
-            prefix = "oni" if train_oni else "nige"
-            callbacks.append(
-                CheckpointCallback(
-                    save_freq=args.checkpoint_freq,
-                    save_path=".",
-                    name_prefix=f"{prefix}_checkpoint_{run_idx}_{ep}"
-                )
-            )
-        if args.render:
-            callbacks.append(RenderCallback(env, render_interval=args.render_interval))
-
-        import time
-        start = time.time()
-        scaled_duration = args.duration / args.speed_multiplier
-        if isinstance(env, VecEnv):
-            env.env_method("set_training_end_time", start + scaled_duration)
-        else:
-            env.set_training_end_time(start + scaled_duration)
-        model = oni_model if train_oni else nige_model
-        while time.time() - start < scaled_duration:
-            model.learn(total_timesteps=args.timesteps, reset_num_timesteps=False, callback=callbacks)
-
-        # Start new episode and swap training agent automatically
-        env.reset()
-
-    oni_model.save(oni_model_path)
-    nige_model.save(nige_model_path)
-    env.close()
-
-
-
 
 def main():
     args = parse_args()
