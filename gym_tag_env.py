@@ -87,12 +87,12 @@ class MultiTagEnv(gym.Env):
         nige_pos = self.stage.random_open_position()
         if self.start_distance_range is not None:
             min_d, max_d = self.start_distance_range
-            max_d = max_d or max(self.width, self.height)
-            d = oni_pos.distance_to(nige_pos)
+            max_d = max_d or (self.width + self.height)
+            _, d = self.stage.shortest_path_info(oni_pos, nige_pos)
             tries = 0
             while not (min_d <= d <= max_d) and tries < 100:
                 nige_pos = self.stage.random_open_position()
-                d = oni_pos.distance_to(nige_pos)
+                _, d = self.stage.shortest_path_info(oni_pos, nige_pos)
                 tries += 1
         self.oni = Agent(oni_pos.x, oni_pos.y, (255, 0, 0))
         self.nige = Agent(nige_pos.x, nige_pos.y, (0, 100, 255))
@@ -100,7 +100,9 @@ class MultiTagEnv(gym.Env):
         self.physical_step_count = 0
         self.cumulative_rewards = [0.0, 0.0]
         self.last_rewards = (0.0, 0.0)
-        self.prev_distance = self.oni.pos.distance_to(self.nige.pos)
+        _, self.prev_distance = self.stage.shortest_path_info(
+            self.oni.pos, self.nige.pos
+        )
         obs = (
             np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
             np.array(self.nige.observe(self.oni, self.stage), dtype=np.float32),
@@ -127,7 +129,7 @@ class MultiTagEnv(gym.Env):
         self.oni.set_direction(odx, ody)
         self.nige.set_direction(ndx, ndy)
 
-        prev_dist = self.oni.pos.distance_to(self.nige.pos)
+        _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
 
         updates = max(1, int(round(self.speed_multiplier)))
 
@@ -136,7 +138,7 @@ class MultiTagEnv(gym.Env):
             self.nige.update(self.stage)
         self.physical_step_count += updates
 
-        new_dist = self.oni.pos.distance_to(self.nige.pos)
+        _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
 
@@ -294,12 +296,12 @@ class TagEnv(gym.Env):
         nige_pos = self.stage.random_open_position()
         if self.start_distance_range is not None:
             min_d, max_d = self.start_distance_range
-            max_d = max_d or max(self.width, self.height)
-            d = oni_pos.distance_to(nige_pos)
+            max_d = max_d or (self.width + self.height)
+            _, d = self.stage.shortest_path_info(oni_pos, nige_pos)
             tries = 0
             while not (min_d <= d <= max_d) and tries < 100:
                 nige_pos = self.stage.random_open_position()
-                d = oni_pos.distance_to(nige_pos)
+                _, d = self.stage.shortest_path_info(oni_pos, nige_pos)
                 tries += 1
         self.oni = Agent(oni_pos.x, oni_pos.y, (255, 0, 0))
         self.nige = Agent(nige_pos.x, nige_pos.y, (0, 100, 255))
@@ -307,7 +309,9 @@ class TagEnv(gym.Env):
         self.physical_step_count = 0
         self.cumulative_reward = 0.0
         self.last_reward = 0.0
-        self.prev_distance = self.oni.pos.distance_to(self.nige.pos)
+        _, self.prev_distance = self.stage.shortest_path_info(
+            self.oni.pos, self.nige.pos
+        )
         return (
             np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
             {},
@@ -330,13 +334,13 @@ class TagEnv(gym.Env):
         rnd = self.np_random.uniform(-1, 1, size=2)
         self.nige.set_direction(float(rnd[0]), float(rnd[1]))
 
-        prev_dist = self.oni.pos.distance_to(self.nige.pos)
+        _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
         updates = max(1, int(round(self.speed_multiplier)))
         for _ in range(updates):
             self.oni.update(self.stage)
             self.nige.update(self.stage)
         self.physical_step_count += updates
-        new_dist = self.oni.pos.distance_to(self.nige.pos)
+        _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
 
