@@ -99,7 +99,9 @@ def run_selfplay(args: argparse.Namespace) -> None:
 
     for ep in range(1, args.episodes + 1):
         env.set_run_info(ep, args.episodes)
-        env.set_training_end_time(time.time() + args.duration)
+        env.set_training_end_time(
+            time.time() + args.duration / args.speed_multiplier
+        )
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
         oni_log_probs = []
