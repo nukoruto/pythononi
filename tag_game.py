@@ -355,18 +355,27 @@ class Agent:
         radius = self.radius / CELL_SIZE
 
         new_x = self.pos.x + self.vel.x
-        if stage.collides_circle(new_x, self.pos.y, radius):
-            new_x = self.pos.x
-            self.vel.x = 0
-            self.speed_boost = 0.0
-
         new_y = self.pos.y + self.vel.y
-        if stage.collides_circle(new_x, new_y, radius):
-            new_y = self.pos.y
-            self.vel.y = 0
-            self.speed_boost = 0.0
 
-        self.pos.update(new_x, new_y)
+        if stage.collides_circle(new_x, new_y, radius):
+            # 角にぶつかった場合のスライド処理
+            if not stage.collides_circle(new_x, self.pos.y, radius):
+                # X 方向のみ移動可能
+                self.pos.x = new_x
+                self.vel.y = 0
+                self.speed_boost = 0.0
+            elif not stage.collides_circle(self.pos.x, new_y, radius):
+                # Y 方向のみ移動可能
+                self.pos.y = new_y
+                self.vel.x = 0
+                self.speed_boost = 0.0
+            else:
+                # 両方向とも衝突
+                self.vel.x = 0
+                self.vel.y = 0
+                self.speed_boost = 0.0
+        else:
+            self.pos.update(new_x, new_y)
 
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         off_x, off_y = offset
