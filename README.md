@@ -48,25 +48,15 @@ vectors = stage.shortest_path_vectors(start, goal)
 pip install -r requirements.txt
 ```
 
-`train.py` は 鬼と逃げを同時に学習する自作ポリシー勾配方式です。
-学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
-描画時にはステップ数の代わりに残り時間や実行回数、鬼と逃げの累積報酬が画面上部に表示されます。
-`train.py` では各エピソード開始時にこれらの値を自動設定するため、表示が常に最新の状態に保たれます。
+
+`train_sac.py` を用いて鬼と逃げをSoft Actor-Criticで学習します。描画を有効にするとリアルタイムに挙動を確認できます。
 
 ```bash
-py train.py --episodes 1000 --render
+py train_sac.py --episodes 1000 --render
 ```
 
-描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。物理更新の倍率は `--speed-multiplier`、描画フレームレートは `--render-speed` でそれぞれ制御できます。`--speed-multiplier` を大きくすると 1 ステップあたりの内部更新回数が増え、計算負荷によっては指定倍率通りにならないことがあります。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間は `duration / speed_multiplier` となります。
-学習処理は `run_selfplay` 関数として実装されており、保存したモデルは `evaluate.py` を通じて同じネットワーク構造で評価できます。
-
-学習後、鬼側モデルは `out/pytorch/oni/oni_YYYYMMDD_HHMMSS.pth`、逃げ側モデルは `out/pytorch/nige/nige_YYYYMMDD_HHMMSS.pth` のように日付と時刻を含むファイル名で保存されます。
-
-## 旧 self-play スクリプト
-
-以前は `train_selfplay.py` を用いて同時学習を行っていましたが、`train.py` に統合したため基本的には使用不要です。残してありますが機能は同等です。
-
+学習後、鬼側モデルは `out/sac/oni/oni_YYYYMMDD_HHMMSS.pth`、逃げ側モデルは `out/sac/nige/nige_YYYYMMDD_HHMMSS.pth` に保存されます。
+評価には `evaluate_sac.py` を利用してください。
 ## コマンドラインオプション一覧
 
 主要スクリプトで利用できる主なオプションを以下にまとめます。
@@ -78,25 +68,6 @@ py train.py --episodes 1000 --render
 | `--duration <秒>` | 1ゲームの制限時間 | 10.0 |
 | `--width-range a,b` | 幅を[a,b]からランダムに奇数選択 | - |
 | `--height-range a,b` | 高さを[a,b]からランダムに奇数選択 | - |
-
-### `train.py`
-
-| オプション | 説明 | デフォルト |
-|------------|------|-----------|
-| `--oni-model <path>` | 鬼モデルの保存/読み込みパス | `oni_policy.zip` |
-| `--nige-model <path>` | 逃げモデルの保存/読み込みパス | `nige_policy.zip` |
-| `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
-| `--render` | 学習中に画面を描画 | - |
-| `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
-| `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
-| `--episodes <int>` | 総エピソード数 | 10 |
-| `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
-| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
-| `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |
-| `--lr <float>` | 自作ポリシー勾配用の学習率 | 3e-4 |
-| `--g` | GPU を利用する(利用可能な場合) | - |
-
-学習済み `.pth` ファイルを読み込み、`train.py` と同じ `Policy` ネットワークで行動を計算します。
 
 ### `train_sac.py`
 
@@ -116,20 +87,6 @@ py train.py --episodes 1000 --render
 | `--g` | GPU を利用する(利用可能な場合) | - |
 
 `train_sac.py` で学習したモデルは、それぞれ `out/sac/oni/oni_YYYYMMDD_HHMMSS.pth` と `out/sac/nige/nige_YYYYMMDD_HHMMSS.pth` に保存されます。
-
-### `evaluate.py`
-
-| オプション | 説明 | デフォルト |
-|------------|------|-----------|
-| `--oni-model <path>` | 評価用鬼モデルのパス | `oni_selfplay.pth` |
-| `--nige-model <path>` | 評価用逃げモデルのパス | `nige_selfplay.pth` |
-| `--episodes <int>` | 評価エピソード数 | 10 |
-| `--render` | 描画を有効化 | - |
-| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
-| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
-| `--g` | GPU を利用する(利用可能な場合) | - |
-
-学習で生成されたモデルを評価する場合は、上記ディレクトリに保存されたファイルパスを `--oni-model` と `--nige-model` に指定してください。
 
 ### `evaluate_sac.py`
 
