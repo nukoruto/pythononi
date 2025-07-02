@@ -14,7 +14,7 @@ from gym_tag_env import MultiTagEnv
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train agents for TagEnv")
+    parser = argparse.ArgumentParser(description="Train agents for MultiTagEnv")
     parser.add_argument("--oni-model", type=str, default="oni_policy.zip", help="Path to save/load oni model")
     parser.add_argument("--nige-model", type=str, default="nige_policy.zip", help="Path to save/load nige model")
     parser.add_argument("--checkpoint-freq", type=int, default=0, help="Save checkpoints every N steps")
