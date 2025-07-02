@@ -50,7 +50,6 @@ class MultiTagEnv(gym.Env):
         self.step_count = 0
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
-        self._updates_per_step = max(1, int(round(self.speed_multiplier)))
         self.render_speed = max(0.1, render_speed)
         self.screen: pygame.Surface | None = None
         self.clock: pygame.time.Clock | None = None
