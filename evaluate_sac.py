@@ -1,8 +1,11 @@
 import argparse
 import os
+from datetime import datetime
 from typing import List, Tuple
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import torch
 
 from train_sac import Actor
@@ -18,7 +21,21 @@ def parse_args():
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
     parser.add_argument("--render-speed", type=float, default=1.0, help="Rendering speed multiplier")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="eval",
+        help="Base directory to store evaluation logs",
+    )
     return parser.parse_args()
+
+
+def _timestamp_output_dir(base_dir: str) -> str:
+    """Create and return ``base_dir/YYYYMMDD_HHMMSS`` directory."""
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_dir = os.path.join(base_dir, ts)
+    os.makedirs(out_dir, exist_ok=True)
+    return out_dir
 
 
 def run_episode(
@@ -71,6 +88,7 @@ def main():
     nige_actor.load_state_dict(nige_state["actor"])
     nige_actor.eval()
 
+    output_dir = _timestamp_output_dir(args.output_dir)
     rewards: List[Tuple[float, float]] = []
     for i in range(args.episodes):
         env.set_run_info(i + 1, args.episodes)
@@ -78,9 +96,33 @@ def main():
         rewards.append(run_episode(env, oni_actor, nige_actor, args.render))
 
     env.close()
-    avg_oni = np.mean([r[0] for r in rewards])
-    avg_nige = np.mean([r[1] for r in rewards])
-    print(f"Average rewards over {args.episodes} episodes -> oni: {avg_oni:.2f}, nige: {avg_nige:.2f}")
+
+    rewards_df = pd.DataFrame({
+        "episode": range(1, args.episodes + 1),
+        "oni_reward": [r[0] for r in rewards],
+        "nige_reward": [r[1] for r in rewards],
+    })
+    rewards_df.to_csv(os.path.join(output_dir, "rewards.csv"), index=False)
+
+    plt.figure()
+    plt.plot(rewards_df["episode"], rewards_df["oni_reward"], label="oni")
+    plt.plot(rewards_df["episode"], rewards_df["nige_reward"], label="nige")
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "evaluation_curve.png"))
+    plt.close()
+
+    avg_oni = rewards_df["oni_reward"].mean()
+    std_oni = rewards_df["oni_reward"].std()
+    avg_nige = rewards_df["nige_reward"].mean()
+    std_nige = rewards_df["nige_reward"].std()
+    print(
+        f"Evaluation over {args.episodes} episodes -> "
+        f"oni: {avg_oni:.2f} ± {std_oni:.2f}, "
+        f"nige: {avg_nige:.2f} ± {std_nige:.2f}"
+    )
 
 
 if __name__ == "__main__":
