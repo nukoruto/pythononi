@@ -59,7 +59,8 @@ py train_sac.py --episodes 1000 --render
 学習時間を秒単位で制限したい場合は `--duration` を用います。速度倍率や描画速度は `--speed-multiplier` と `--render-speed` で調整可能です。
 保存したモデルは `evaluate_sac.py` から評価できます。
 
-学習後、鬼側モデルは `out/sac/oni/oni_YYYYMMDD_HHMMSS.pth`、逃げ側モデルは `out/sac/nige/nige_YYYYMMDD_HHMMSS.pth` に保存されます。
+学習後、鬼側モデルと逃げ側モデルは `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
+`out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
 
 
 以前は `train_selfplay.py` を用いて同時学習を行っていましたが、現在は `train_sac.py` を使用します。
@@ -89,7 +90,8 @@ py train_sac.py --episodes 1000 --render
 | `--lr <float>` | 学習率 | 3e-4 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
 
-`train_sac.py` で学習したモデルは、それぞれ `out/sac/oni/oni_YYYYMMDD_HHMMSS.pth` と `out/sac/nige/nige_YYYYMMDD_HHMMSS.pth` に保存されます。
+`train_sac.py` で学習したモデルは、それぞれ `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
+`out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
 
 ### `evaluate_sac.py`
 
