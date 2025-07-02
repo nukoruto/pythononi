@@ -99,6 +99,24 @@ py train.py --episodes 1000 --render
 
 学習済み `.pth` ファイルを読み込み、`train.py` と同じ `Policy` ネットワークで行動を計算します。
 
+### `train_sac.py`
+
+| オプション | 説明 | デフォルト |
+|------------|------|-----------|
+| `--timesteps <int>` | 各エピソードの学習ステップ数 | 10000 |
+| `--oni-model <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
+| `--nige-model <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
+| `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
+| `--render` | 学習中に画面を描画 | - |
+| `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
+| `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
+| `--episodes <int>` | 総エピソード数 | 10 |
+| `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
+| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
+| `--gamma <float>` | 割引率 | 0.99 |
+| `--lr <float>` | 学習率 | 3e-4 |
+| `--g` | GPU を利用する(利用可能な場合) | - |
+
 ### `evaluate.py`
 
 | オプション | 説明 | デフォルト |
