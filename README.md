@@ -131,6 +131,18 @@ py train.py --episodes 1000 --render
 
 学習で生成されたモデルを評価する場合は、上記ディレクトリに保存されたファイルパスを `--oni-model` と `--nige-model` に指定してください。
 
+### `evaluate_sac.py`
+
+| オプション | 説明 | デフォルト |
+|------------|------|-----------|
+| `--oni-model <path>` | 評価用鬼モデルのパス | `oni_sac.pth` |
+| `--nige-model <path>` | 評価用逃げモデルのパス | `nige_sac.pth` |
+| `--episodes <int>` | 評価エピソード数 | 10 |
+| `--render` | 描画を有効化 | - |
+| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
+| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
+| `--g` | GPU を利用する(利用可能な場合) | - |
+
 ## ライセンス
 
 このプロジェクトは [MIT License](LICENSE) のもとで公開されています。
