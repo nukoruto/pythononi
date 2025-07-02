@@ -17,7 +17,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Soft Actor-Critic training for MultiTagEnv"
     )
-    parser.add_argument("--timesteps", type=int, default=10000, help="Training steps per episode")
     parser.add_argument("--oni-model", type=str, default="oni_sac.pth", help="Path to save oni model")
     parser.add_argument("--nige-model", type=str, default="nige_sac.pth", help="Path to save nige model")
     parser.add_argument("--checkpoint-freq", type=int, default=0, help="Save checkpoints every N steps")
