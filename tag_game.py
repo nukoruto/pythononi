@@ -374,8 +374,8 @@ class Agent:
             screen,
             self.color,
             (
-                int(off_x + self.pos.x * CELL_SIZE + CELL_SIZE / 2),
-                int(off_y + self.pos.y * CELL_SIZE + CELL_SIZE / 2),
+                int(off_x + self.pos.x * CELL_SIZE),
+                int(off_y + self.pos.y * CELL_SIZE),
             ),
             self.radius,
         )
@@ -384,12 +384,12 @@ class Agent:
 
     def collides_with(self, other: "Agent") -> bool:
         center_self = pygame.Vector2(
-            self.pos.x * CELL_SIZE + CELL_SIZE / 2,
-            self.pos.y * CELL_SIZE + CELL_SIZE / 2,
+            self.pos.x * CELL_SIZE,
+            self.pos.y * CELL_SIZE,
         )
         center_other = pygame.Vector2(
-            other.pos.x * CELL_SIZE + CELL_SIZE / 2,
-            other.pos.y * CELL_SIZE + CELL_SIZE / 2,
+            other.pos.x * CELL_SIZE,
+            other.pos.y * CELL_SIZE,
         )
         return center_self.distance_to(center_other) < self.radius + other.radius
 
