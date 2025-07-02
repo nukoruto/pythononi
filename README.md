@@ -92,6 +92,7 @@ py train_sac.py --episodes 1000 --render
 | `--gamma <float>` | 割引率 | 0.99 |
 | `--lr <float>` | 学習率 | 3e-4 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
+| `--num-envs <int>` | 並列環境数 | 1 |
 
 `train_sac.py` で学習したモデルは、それぞれ `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
 `out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。

@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument("--buffer-size", type=int, default=100000, help="Replay buffer size")
     parser.add_argument("--tau", type=float, default=0.005, help="Target update coefficient")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments")
     return parser.parse_args()
 
 
@@ -224,9 +225,10 @@ def run_training(args: argparse.Namespace) -> None:
         print("GPU is not available. Falling back to CPU.")
     print(f"Using device: {device}")
 
-    env = _create_env(args)
-    obs_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
+    num_envs = max(1, args.num_envs)
+    envs = [_create_env(args) for _ in range(min(num_envs, args.episodes))]
+    obs_dim = envs[0].observation_space.shape[0]
+    action_dim = envs[0].action_space.shape[0]
     oni = SACAgent(obs_dim, action_dim, args, device)
     nige = SACAgent(obs_dim, action_dim, args, device)
     oni_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
@@ -237,23 +239,30 @@ def run_training(args: argparse.Namespace) -> None:
     nige_model_path = os.path.join(output_dir, args.nige_model)
 
     total_steps = 0
-    for ep in range(1, args.episodes + 1):
-        env.set_run_info(ep, args.episodes)
+    episode_count = len(envs)
+    completed = 0
+    obs_list = []
+    active = [True] * len(envs)
+    for i, env in enumerate(envs):
+        env.set_run_info(i + 1, args.episodes)
         env.set_training_end_time(time.time() + args.duration / args.speed_multiplier)
         obs, _ = env.reset()
-        oni_obs, nige_obs = obs
-        done = False
-        while not done:
+        obs_list.append(obs)
+
+    while completed < args.episodes:
+        for i, env in enumerate(envs):
+            if not active[i]:
+                continue
+            oni_obs, nige_obs = obs_list[i]
             oni_action = oni.act(oni_obs)
             nige_action = nige.act(nige_obs)
             (next_oni_obs, next_nige_obs), (r_o, r_n), terminated, truncated, _ = env.step((oni_action, nige_action))
             done = terminated or truncated
             oni_buf.add(oni_obs, oni_action, r_o, next_oni_obs, float(done))
             nige_buf.add(nige_obs, nige_action, r_n, next_nige_obs, float(done))
-            oni_obs = next_oni_obs
-            nige_obs = next_nige_obs
+            obs_list[i] = (next_oni_obs, next_nige_obs)
             total_steps += 1
-            if args.render and total_steps % args.render_interval == 0:
+            if args.render and i == 0 and total_steps % args.render_interval == 0:
                 env.render()
             if len(oni_buf) >= args.batch_size:
                 oni.update(oni_buf, args.batch_size)
@@ -262,17 +271,29 @@ def run_training(args: argparse.Namespace) -> None:
             if args.checkpoint_freq > 0 and total_steps % args.checkpoint_freq == 0:
                 oni.save(oni_model_path)
                 nige.save(nige_model_path)
-        if args.render:
-            env.render()
-        print(
-            f"Episode {ep} finished remaining_time={env.remaining_time:.2f}s "
-            f"oni_reward={env.cumulative_rewards[0]:.2f} "
-            f"nige_reward={env.cumulative_rewards[1]:.2f}"
-        )
+            if done:
+                if args.render and i == 0:
+                    env.render()
+                completed += 1
+                print(
+                    f"Episode {completed} finished remaining_time={env.remaining_time:.2f}s "
+                    f"oni_reward={env.cumulative_rewards[0]:.2f} "
+                    f"nige_reward={env.cumulative_rewards[1]:.2f}"
+                )
+                if episode_count < args.episodes:
+                    env.set_run_info(episode_count + 1, args.episodes)
+                    env.set_training_end_time(time.time() + args.duration / args.speed_multiplier)
+                    obs_list[i], _ = env.reset()
+                    episode_count += 1
+                else:
+                    active[i] = False
+        if not any(active):
+            break
 
     oni.save(oni_model_path)
     nige.save(nige_model_path)
-    env.close()
+    for env in envs:
+        env.close()
 
 
 def main():
