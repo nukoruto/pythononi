@@ -43,11 +43,12 @@ def _create_env(args: argparse.Namespace) -> MultiTagEnv:
     )
 
 
-def _timestamp_output_path(base_dir: str, prefix: str) -> str:
-    """Return a path like ``prefix_YYYYMMDD_HHMMSS.pth`` under ``base_dir``."""
-    os.makedirs(base_dir, exist_ok=True)
+def _timestamp_output_dir(base_dir: str = "out") -> str:
+    """Create and return ``out/YYYYMMDD_HHMMSS`` directory."""
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return os.path.join(base_dir, f"{prefix}_{ts}.pth")
+    output_dir = os.path.join(base_dir, ts)
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
 
 
 class ReplayBuffer:
@@ -231,8 +232,9 @@ def run_training(args: argparse.Namespace) -> None:
     oni_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
     nige_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
 
-    final_oni_path = _timestamp_output_path("out/sac/oni", "oni")
-    final_nige_path = _timestamp_output_path("out/sac/nige", "nige")
+    output_dir = _timestamp_output_dir("out")
+    oni_model_path = os.path.join(output_dir, args.oni_model)
+    nige_model_path = os.path.join(output_dir, args.nige_model)
 
     total_steps = 0
     for ep in range(1, args.episodes + 1):
@@ -258,8 +260,8 @@ def run_training(args: argparse.Namespace) -> None:
             if len(nige_buf) >= args.batch_size:
                 nige.update(nige_buf, args.batch_size)
             if args.checkpoint_freq > 0 and total_steps % args.checkpoint_freq == 0:
-                oni.save(args.oni_model)
-                nige.save(args.nige_model)
+                oni.save(oni_model_path)
+                nige.save(nige_model_path)
         if args.render:
             env.render()
         print(
@@ -268,8 +270,8 @@ def run_training(args: argparse.Namespace) -> None:
             f"nige_reward={env.cumulative_rewards[1]:.2f}"
         )
 
-    oni.save(final_oni_path)
-    nige.save(final_nige_path)
+    oni.save(oni_model_path)
+    nige.save(nige_model_path)
     env.close()
 
 
