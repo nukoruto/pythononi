@@ -1,5 +1,6 @@
 import argparse
 import os
+from datetime import datetime
 from typing import Tuple
 
 import gymnasium as gym
@@ -40,6 +41,13 @@ def _create_env(args: argparse.Namespace) -> MultiTagEnv:
         speed_multiplier=args.speed_multiplier,
         render_speed=args.render_speed,
     )
+
+
+def _timestamp_output_path(base_dir: str, prefix: str) -> str:
+    """Return a path like ``prefix_YYYYMMDD_HHMMSS.pth`` under ``base_dir``."""
+    os.makedirs(base_dir, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return os.path.join(base_dir, f"{prefix}_{ts}.pth")
 
 
 class ReplayBuffer:
@@ -223,6 +231,9 @@ def run_training(args: argparse.Namespace) -> None:
     oni_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
     nige_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
 
+    final_oni_path = _timestamp_output_path("out/sac/oni", "oni")
+    final_nige_path = _timestamp_output_path("out/sac/nige", "nige")
+
     total_steps = 0
     for ep in range(1, args.episodes + 1):
         env.set_run_info(ep, args.episodes)
@@ -257,8 +268,8 @@ def run_training(args: argparse.Namespace) -> None:
             f"nige_reward={env.cumulative_rewards[1]:.2f}"
         )
 
-    oni.save(args.oni_model)
-    nige.save(args.nige_model)
+    oni.save(final_oni_path)
+    nige.save(final_nige_path)
     env.close()
 
 

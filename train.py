@@ -71,20 +71,14 @@ def compute_returns(rewards, gamma: float):
     return returns
 
 
-def _next_output_path(base_dir: str, prefix: str) -> str:
-    """Return next sequential path like ``prefix_N.pth`` under ``base_dir``."""
+from datetime import datetime
+
+
+def _timestamp_output_path(base_dir: str, prefix: str) -> str:
+    """Return a path like ``prefix_YYYYMMDD_HHMMSS.pth`` under ``base_dir``."""
     os.makedirs(base_dir, exist_ok=True)
-    max_idx = 0
-    for name in os.listdir(base_dir):
-        if name.startswith(f"{prefix}_") and name.endswith(".pth"):
-            m = re.search(rf"{prefix}_(\d+)\.pth", name)
-            if m:
-                try:
-                    idx = int(m.group(1))
-                    max_idx = max(max_idx, idx)
-                except ValueError:
-                    continue
-    return os.path.join(base_dir, f"{prefix}_{max_idx + 1}.pth")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return os.path.join(base_dir, f"{prefix}_{ts}.pth")
 
 
 def run_selfplay(args: argparse.Namespace) -> None:
@@ -175,8 +169,8 @@ def run_selfplay(args: argparse.Namespace) -> None:
                 f"episode {ep}: average oniR={avg_oni:.2f} average nigeR={avg_nige:.2f}"
             )
 
-    oni_path = _next_output_path("out/oni", "out")
-    nige_path = _next_output_path("out/nige", "nige")
+    oni_path = _timestamp_output_path("out/pytorch/oni", "oni")
+    nige_path = _timestamp_output_path("out/pytorch/nige", "nige")
     torch.save(oni_policy.state_dict(), oni_path)
     torch.save(nige_policy.state_dict(), nige_path)
     env.close()
