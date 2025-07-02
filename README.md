@@ -111,6 +111,12 @@ py train_sac.py --episodes 1000 --render
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
 | `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
+| `--output-dir <path>` | 評価結果を保存する基点ディレクトリ | `eval` |
+
+指定エピソードの評価が終了すると、`<output-dir>/YYYYMMDD_HHMMSS` 以下に
+`rewards.csv` と `evaluation_curve.png` が生成されます。標準出力には
+平均報酬とその標準偏差が表示されるため、学習時と同様に性能を定量的に
+確認できます。
 
 ## ライセンス
 
