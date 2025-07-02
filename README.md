@@ -61,6 +61,8 @@ py train_sac.py --episodes 1000 --render
 
 学習後、鬼側モデルと逃げ側モデルは `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
 `out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
+各エピソードの累積報酬は `rewards.csv` に記録され、同ディレクトリに
+`learning_curve.png` として学習曲線も保存されます。
 
 
 以前は `train_selfplay.py` を用いて同時学習を行っていましたが、現在は `train_sac.py` を使用します。
