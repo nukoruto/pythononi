@@ -8,6 +8,44 @@ import pygame
 
 from stage_generator import generate_stage, Stage
 import numpy as np
+import torch
+
+
+class Actor(torch.nn.Module):
+    """Simple actor network compatible with SAC models."""
+
+    def __init__(self, obs_dim: int, action_dim: int, hidden_dim: int = 256):
+        super().__init__()
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(obs_dim, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.ReLU(),
+        )
+        self.mean = torch.nn.Linear(hidden_dim, action_dim)
+        self.log_std = torch.nn.Linear(hidden_dim, action_dim)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        h = self.net(x)
+        return self.mean(h), self.log_std(h)
+
+    def sample(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        mean, log_std = self(obs)
+        log_std = torch.clamp(log_std, -20, 2)
+        std = log_std.exp()
+        normal = torch.distributions.Normal(mean, std)
+        x_t = normal.rsample()
+        y_t = torch.tanh(x_t)
+        log_prob = normal.log_prob(x_t) - torch.log(1 - y_t.pow(2) + 1e-6)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        return y_t, log_prob
+
+    def act(self, obs: np.ndarray) -> np.ndarray:
+        device = next(self.parameters()).device
+        obs_t = torch.tensor(obs, dtype=torch.float32, device=device)
+        with torch.no_grad():
+            action, _ = self.sample(obs_t.unsqueeze(0))
+        return action.squeeze(0).cpu().numpy()
 
 
 CELL_SIZE = 20
@@ -394,6 +432,12 @@ def main():
         help="ゲームの制限時間（秒）",
     )
     parser.add_argument(
+        "--games",
+        type=int,
+        default=1,
+        help="連続対戦数",
+    )
+    parser.add_argument(
         "--width-range",
         type=str,
         default=None,
@@ -405,7 +449,22 @@ def main():
         default=None,
         help="ステージ高さの最小値と最大値をカンマ区切りで指定",
     )
+    parser.add_argument(
+        "--oni",
+        type=str,
+        default=None,
+        help="鬼側モデルのパス（指定すると逃げはプレイヤー操作）",
+    )
+    parser.add_argument(
+        "--nige",
+        type=str,
+        default=None,
+        help="逃げ側モデルのパス（指定すると鬼はプレイヤー操作）",
+    )
     args = parser.parse_args()
+
+    if (args.oni is None) == (args.nige is None):
+        raise SystemExit("--oni または --nige のどちらか一方を指定してください")
 
     pygame.init()
     width, height = 31, 21
@@ -424,77 +483,103 @@ def main():
         except Exception as e:
             raise SystemExit(f"invalid --height-range: {e}")
 
-    stage = StageMap(
-        width,
-        height,
-        extra_wall_prob=EXTRA_WALL_PROB,
-        width_range=width_range,
-        height_range=height_range,
-    )
-    width, height = stage.width, stage.height
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    oni_actor = None
+    nige_actor = None
+    if args.oni is not None:
+        oni_actor = Actor(3, 2).to(device)
+        state = torch.load(args.oni, map_location=device)
+        oni_actor.load_state_dict(state["actor"] if "actor" in state else state)
+        oni_actor.eval()
+    if args.nige is not None:
+        nige_actor = Actor(3, 2).to(device)
+        state = torch.load(args.nige, map_location=device)
+        nige_actor.load_state_dict(state["actor"] if "actor" in state else state)
+        nige_actor.eval()
 
-    screen = pygame.display.set_mode(
-        (width * CELL_SIZE, height * CELL_SIZE + INFO_PANEL_HEIGHT)
-    )
-    clock = pygame.time.Clock()
-    font = pygame.font.SysFont(None, 24)
-    start = time.time()
-    end_time = start + args.duration
-
-    oni = Agent(1.5, 1.5, (255, 0, 0))
-    nige = Agent(width - 2, height - 2, (0, 100, 255))
-
-    running = True
-    while running:
-        remaining = max(0.0, end_time - time.time())
-        if remaining <= 0:
-            break
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-        keys = pygame.key.get_pressed()
-        # arrow keys control escapee
-        dx = keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]
-        dy = keys[pygame.K_DOWN] - keys[pygame.K_UP]
-        nige.set_direction(dx, dy)
-        # wasd for oni
-        odx = keys[pygame.K_d] - keys[pygame.K_a]
-        ody = keys[pygame.K_s] - keys[pygame.K_w]
-        oni.set_direction(odx, ody)
-        oni.update(stage)
-        nige.update(stage)
-
-        screen.fill((0, 0, 0))
-        pygame.draw.rect(
-            screen,
-            (255, 255, 255),
-            pygame.Rect(0, 0, width * CELL_SIZE, INFO_PANEL_HEIGHT),
+    for game in range(args.games):
+        stage = StageMap(
+            width,
+            height,
+            extra_wall_prob=EXTRA_WALL_PROB,
+            width_range=width_range,
+            height_range=height_range,
         )
-        offset = (0, INFO_PANEL_HEIGHT)
-        stage.draw(screen, offset)
-        oni.draw(screen, offset)
-        nige.draw(screen, offset)
-        stage.draw_shortest_path_vectors(
-            screen, oni.pos, nige.pos, offset=offset
+        width, height = stage.width, stage.height
+
+        screen = pygame.display.set_mode(
+            (width * CELL_SIZE, height * CELL_SIZE + INFO_PANEL_HEIGHT)
         )
-        txt = font.render(f"残り{remaining:.1f}秒", True, (0, 0, 0))
-        screen.blit(txt, (10, 5))
-        if oni.collides_with(nige):
-            font = pygame.font.SysFont(None, 48)
-            text = font.render("Caught!", True, (255, 0, 0))
-            rect = text.get_rect(
-                center=(
-                    width * CELL_SIZE // 2,
-                    height * CELL_SIZE // 2 + INFO_PANEL_HEIGHT // 2,
-                )
+        clock = pygame.time.Clock()
+        font = pygame.font.SysFont(None, 24)
+        start = time.time()
+        end_time = start + args.duration
+
+        oni = Agent(1.5, 1.5, (255, 0, 0))
+        nige = Agent(width - 2, height - 2, (0, 100, 255))
+
+        running = True
+        result = "timeout"
+        while running:
+            remaining = max(0.0, end_time - time.time())
+            if remaining <= 0:
+                result = "timeout"
+                break
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+            keys = pygame.key.get_pressed()
+            pdx = keys[pygame.K_d] - keys[pygame.K_a]
+            pdy = keys[pygame.K_s] - keys[pygame.K_w]
+
+            oni_obs, nige_obs = get_state(oni, nige, stage)
+            if oni_actor is not None:
+                action = oni_actor.act(np.array(oni_obs, dtype=np.float32))
+                oni.set_direction(float(action[0]), float(action[1]))
+                nige.set_direction(pdx, pdy)
+            else:
+                oni.set_direction(pdx, pdy)
+                if nige_actor is not None:
+                    action = nige_actor.act(np.array(nige_obs, dtype=np.float32))
+                    nige.set_direction(float(action[0]), float(action[1]))
+
+            oni.update(stage)
+            nige.update(stage)
+
+            screen.fill((0, 0, 0))
+            pygame.draw.rect(
+                screen,
+                (255, 255, 255),
+                pygame.Rect(0, 0, width * CELL_SIZE, INFO_PANEL_HEIGHT),
             )
-            screen.blit(text, rect)
+            offset = (0, INFO_PANEL_HEIGHT)
+            stage.draw(screen, offset)
+            oni.draw(screen, offset)
+            nige.draw(screen, offset)
+            stage.draw_shortest_path_vectors(
+                screen, oni.pos, nige.pos, offset=offset
+            )
+            info = f"残り{remaining:.1f}秒  ({game + 1}/{args.games})"
+            txt = font.render(info, True, (0, 0, 0))
+            screen.blit(txt, (10, 5))
+            if oni.collides_with(nige):
+                result = "caught"
+                font_big = pygame.font.SysFont(None, 48)
+                text = font_big.render("Caught!", True, (255, 0, 0))
+                rect = text.get_rect(
+                    center=(
+                        width * CELL_SIZE // 2,
+                        height * CELL_SIZE // 2 + INFO_PANEL_HEIGHT // 2,
+                    )
+                )
+                screen.blit(text, rect)
+                pygame.display.flip()
+                pygame.time.wait(1000)
+                break
             pygame.display.flip()
-            pygame.time.wait(1000)
-            running = False
-            continue
-        pygame.display.flip()
-        clock.tick(60)
+            clock.tick(60)
+
+        print(f"Game {game + 1}/{args.games}: {result}")
 
     pygame.quit()
 

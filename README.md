@@ -71,6 +71,9 @@ py train_sac.py --episodes 1000 --render
 | `--duration <秒>` | 1ゲームの制限時間 | 10.0 |
 | `--width-range a,b` | 幅を[a,b]からランダムに奇数選択 | - |
 | `--height-range a,b` | 高さを[a,b]からランダムに奇数選択 | - |
+| `--games <int>` | 連続対戦数 | 1 |
+| `--oni <path>` | 鬼側モデルのパス（指定すると逃げはプレイヤー操作） | - |
+| `--nige <path>` | 逃げ側モデルのパス（指定すると鬼はプレイヤー操作） | - |
 
 ### `train_sac.py`
 
