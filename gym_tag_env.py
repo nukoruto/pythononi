@@ -32,6 +32,8 @@ class MultiTagEnv(gym.Env):
         speed_multiplier: float = 1.0,
         render_speed: float = 1.0,
         start_distance_range: tuple[int, int] | None = None,
+        width_range: tuple[int, int] | None = None,
+        height_range: tuple[int, int] | None = None,
     ) -> None:
         super().__init__()
         self.width = width
@@ -59,6 +61,8 @@ class MultiTagEnv(gym.Env):
         self.total_runs: int = 1
         self.training_end_time: float | None = None
         self.start_distance_range = start_distance_range
+        self.width_range = width_range
+        self.height_range = height_range
 
     def set_run_info(self, current_run: int, total_runs: int) -> None:
         """Set current episode index and total runs for rendering."""
@@ -83,8 +87,16 @@ class MultiTagEnv(gym.Env):
             self.width,
             self.height,
             extra_wall_prob=self.extra_wall_prob,
+            width_range=self.width_range,
+            height_range=self.height_range,
             rng=self.np_random,
         )
+        self.width = self.stage.width
+        self.height = self.stage.height
+        if self.screen is not None:
+            self.screen = pygame.display.set_mode(
+                (self.width * CELL_SIZE, self.height * CELL_SIZE + INFO_PANEL_HEIGHT)
+            )
         oni_pos = self.stage.random_open_position()
         nige_pos = self.stage.random_open_position()
         if self.start_distance_range is not None:
@@ -244,6 +256,8 @@ class TagEnv(gym.Env):
         speed_multiplier: float = 1.0,
         render_speed: float = 1.0,
         start_distance_range: tuple[int, int] | None = None,
+        width_range: tuple[int, int] | None = None,
+        height_range: tuple[int, int] | None = None,
     ):
         super().__init__()
         self.width = width
@@ -293,8 +307,16 @@ class TagEnv(gym.Env):
             self.width,
             self.height,
             extra_wall_prob=self.extra_wall_prob,
+            width_range=self.width_range,
+            height_range=self.height_range,
             rng=self.np_random,
         )
+        self.width = self.stage.width
+        self.height = self.stage.height
+        if self.screen is not None:
+            self.screen = pygame.display.set_mode(
+                (self.width * CELL_SIZE, self.height * CELL_SIZE + INFO_PANEL_HEIGHT)
+            )
         oni_pos = self.stage.random_open_position()
         nige_pos = self.stage.random_open_position()
         if self.start_distance_range is not None:
