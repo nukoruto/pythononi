@@ -6,7 +6,6 @@ from typing import Tuple
 import pandas as pd
 import matplotlib.pyplot as plt
 
-import gymnasium as gym
 import numpy as np
 import time
 import torch
