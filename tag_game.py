@@ -27,8 +27,27 @@ class StageMap:
         height: int,
         extra_wall_prob: float = 0.0,
         rng: np.random.Generator | None = None,
+        width_range: Tuple[int, int] | None = None,
+        height_range: Tuple[int, int] | None = None,
     ):
         self.rng = rng or np.random.default_rng()
+
+        if width_range is not None:
+            w0, w1 = sorted(width_range)
+            odd_min = w0 if w0 % 2 == 1 else w0 + 1
+            odd_max = w1 if w1 % 2 == 1 else w1 - 1
+            if odd_min > odd_max:
+                raise ValueError("width_range must include at least one odd number")
+            width = int(odd_min + 2 * self.rng.integers(0, ((odd_max - odd_min) // 2) + 1))
+
+        if height_range is not None:
+            h0, h1 = sorted(height_range)
+            odd_min = h0 if h0 % 2 == 1 else h0 + 1
+            odd_max = h1 if h1 % 2 == 1 else h1 - 1
+            if odd_min > odd_max:
+                raise ValueError("height_range must include at least one odd number")
+            height = int(odd_min + 2 * self.rng.integers(0, ((odd_max - odd_min) // 2) + 1))
+
         self.grid = generate_stage(width, height, extra_wall_prob=extra_wall_prob, rng=self.rng)
         self.width = width
         self.height = height
@@ -368,11 +387,35 @@ def main():
         default=DEFAULT_DURATION,
         help="ゲームの制限時間（秒）",
     )
+    def parse_range(text: str) -> Tuple[int, int]:
+        try:
+            a, b = text.split(",")
+            return int(a), int(b)
+        except Exception as e:
+            raise argparse.ArgumentTypeError("format should be MIN,MAX") from e
+
+    parser.add_argument(
+        "--width-range",
+        type=parse_range,
+        help="ステージ幅の範囲を 'min,max' 形式で指定",
+    )
+    parser.add_argument(
+        "--height-range",
+        type=parse_range,
+        help="ステージ高さの範囲を 'min,max' 形式で指定",
+    )
     args = parser.parse_args()
 
     pygame.init()
     width, height = 31, 21
-    stage = StageMap(width, height, extra_wall_prob=EXTRA_WALL_PROB)
+    stage = StageMap(
+        width,
+        height,
+        extra_wall_prob=EXTRA_WALL_PROB,
+        width_range=args.width_range,
+        height_range=args.height_range,
+    )
+    width, height = stage.width, stage.height
 
     screen = pygame.display.set_mode(
         (width * CELL_SIZE, height * CELL_SIZE + INFO_PANEL_HEIGHT)

@@ -32,12 +32,16 @@ class MultiTagEnv(gym.Env):
         speed_multiplier: float = 1.0,
         render_speed: float = 1.0,
         start_distance_range: tuple[int, int] | None = None,
+        width_range: tuple[int, int] | None = None,
+        height_range: tuple[int, int] | None = None,
     ) -> None:
         super().__init__()
         self.width = width
         self.height = height
         self.max_steps = max_steps
         self.extra_wall_prob = extra_wall_prob
+        self.width_range = width_range
+        self.height_range = height_range
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
@@ -86,7 +90,12 @@ class MultiTagEnv(gym.Env):
             self.height,
             extra_wall_prob=self.extra_wall_prob,
             rng=self.np_random,
+            width_range=self.width_range,
+            height_range=self.height_range,
         )
+        self.width = self.stage.width
+        self.height = self.stage.height
+        self.screen = None
         oni_pos = self.stage.random_open_position()
         nige_pos = self.stage.random_open_position()
         if self.start_distance_range is not None:
@@ -246,12 +255,16 @@ class TagEnv(gym.Env):
         speed_multiplier: float = 1.0,
         render_speed: float = 1.0,
         start_distance_range: tuple[int, int] | None = None,
+        width_range: tuple[int, int] | None = None,
+        height_range: tuple[int, int] | None = None,
     ):
         super().__init__()
         self.width = width
         self.height = height
         self.max_steps = max_steps
         self.extra_wall_prob = extra_wall_prob
+        self.width_range = width_range
+        self.height_range = height_range
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
@@ -296,7 +309,12 @@ class TagEnv(gym.Env):
             self.height,
             extra_wall_prob=self.extra_wall_prob,
             rng=self.np_random,
+            width_range=self.width_range,
+            height_range=self.height_range,
         )
+        self.width = self.stage.width
+        self.height = self.stage.height
+        self.screen = None
         oni_pos = self.stage.random_open_position()
         nige_pos = self.stage.random_open_position()
         if self.start_distance_range is not None:
