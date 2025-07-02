@@ -55,6 +55,10 @@ pip install -r requirements.txt
 py train.py --episodes 1000 --render
 ```
 
+複数の環境を同時に学習したい場合は `--num-envs` で並列数を指定します。値が 1 の
+ときは通常の `SyncVectorEnv`、2 以上では `AsyncVectorEnv` を利用して並列化されま
+す。
+
 描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
 学習時間を秒単位で制限したい場合は `--duration` を用います。物理更新の倍率は `--speed-multiplier`、描画フレームレートは `--render-speed` でそれぞれ制御できます。`--speed-multiplier` を大きくすると 1 ステップあたりの内部更新回数が増え、計算負荷によっては指定倍率通りにならないことがあります。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間は `duration / speed_multiplier` となります。
 学習処理は `run_selfplay` 関数として実装されており、保存したモデルは `evaluate.py` を通じて同じネットワーク構造で評価できます。
@@ -87,6 +91,7 @@ py train.py --episodes 1000 --render
 | `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
 | `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
 | `--episodes <int>` | 総エピソード数 | 10 |
+| `--num-envs <int>` | 並列環境数 | 1 |
 | `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
 | `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--gamma <float>` | 自作ポリシー勾配用の割引率 | 0.99 |

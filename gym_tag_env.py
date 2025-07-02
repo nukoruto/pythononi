@@ -43,8 +43,10 @@ class MultiTagEnv(gym.Env):
         self.nige: Agent | None = None
         low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
         high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
-        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        single_obs_space = spaces.Box(low=low, high=high, dtype=np.float32)
+        single_act_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.observation_space = spaces.Tuple((single_obs_space, single_obs_space))
+        self.action_space = spaces.Tuple((single_act_space, single_act_space))
         self.step_count = 0
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
