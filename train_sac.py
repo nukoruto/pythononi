@@ -3,8 +3,10 @@ import os
 from datetime import datetime
 from typing import Tuple
 
-import pandas as pd
+import pandas as pd  # type: ignore
 import matplotlib.pyplot as plt
+from typing import cast
+from gymnasium import spaces
 
 import numpy as np
 import time
@@ -227,8 +229,8 @@ def run_training(args: argparse.Namespace) -> None:
     print(f"Using device: {device}")
 
     env = _create_env(args)
-    obs_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
+    obs_dim = cast(spaces.Box, env.observation_space).shape[0]
+    action_dim = cast(spaces.Box, env.action_space).shape[0]
     oni = SACAgent(obs_dim, action_dim, args, device)
     nige = SACAgent(obs_dim, action_dim, args, device)
     oni_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)

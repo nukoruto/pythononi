@@ -2,6 +2,7 @@
 """Gym environment for the tag game."""
 import random
 import time
+from typing import Any
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -14,7 +15,12 @@ from tag_game import StageMap, Agent, CELL_SIZE
 INFO_PANEL_HEIGHT = 40
 
 
-class MultiTagEnv(gym.Env):
+class MultiTagEnv(
+    gym.Env[
+        tuple[np.ndarray, np.ndarray],
+        tuple[np.ndarray, np.ndarray],
+    ]
+):
     """Two-agent tag environment.
 
     ``step`` expects actions for both agents and returns observations and
@@ -45,8 +51,17 @@ class MultiTagEnv(gym.Env):
         self.nige: Agent | None = None
         low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
         high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
-        self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.observation_space: spaces.Box = spaces.Box(
+            low=low,
+            high=high,
+            dtype=np.float32,
+        )
+        self.action_space: spaces.Box = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(2,),
+            dtype=np.float32,
+        )
         self.step_count = 0
         self.physical_step_count = 0
         self.speed_multiplier = max(0.1, speed_multiplier)
@@ -124,7 +139,13 @@ class MultiTagEnv(gym.Env):
 
     def step(
         self, actions: tuple[np.ndarray, np.ndarray]
-    ) -> tuple[tuple[np.ndarray, np.ndarray], tuple[float, float], bool, bool, dict]:
+    ) -> tuple[
+        tuple[np.ndarray, np.ndarray],
+        tuple[float, float],
+        bool,
+        bool,
+        dict[str, Any],
+    ]:
         assert self.oni and self.nige and self.stage
         action_oni, action_nige = actions
         self.step_count += 1
@@ -190,7 +211,7 @@ class MultiTagEnv(gym.Env):
         self.cumulative_rewards[0] += oni_reward
         self.cumulative_rewards[1] += nige_reward
 
-        info = {}
+        info: dict[str, Any] = {}
         return (oni_obs, nige_obs), (oni_reward, nige_reward), terminated, truncated, info
 
     def render(self) -> None:
