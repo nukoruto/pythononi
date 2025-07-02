@@ -61,7 +61,7 @@ py train.py --episodes 1000 --render
 学習時間を秒単位で制限したい場合は `--duration` を用います。物理更新の倍率は `--speed-multiplier`、描画フレームレートは `--render-speed` でそれぞれ制御できます。`--speed-multiplier` を大きくすると 1 ステップあたりの内部更新回数が増え、計算負荷によっては指定倍率通りにならないことがあります。`--duration` で指定した値は環境時間なので、`--speed-multiplier` が 2 の場合、実際の経過時間は `duration / speed_multiplier` となります。
 学習処理は `run_selfplay` 関数として実装されており、保存したモデルは `evaluate.py` を通じて同じネットワーク構造で評価できます。
 
-学習後、鬼側モデルは `oni_selfplay.pth`、逃げ側モデルは `nige_selfplay.pth` として保存されます。
+学習後、鬼側モデルは `out/pytorch/oni/oni_YYYYMMDD_HHMMSS.pth`、逃げ側モデルは `out/pytorch/nige/nige_YYYYMMDD_HHMMSS.pth` のように日付と時刻を含むファイル名で保存されます。
 
 ## 旧 self-play スクリプト
 
@@ -115,6 +115,8 @@ py train.py --episodes 1000 --render
 | `--lr <float>` | 学習率 | 3e-4 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
 
+`train_sac.py` で学習したモデルは、それぞれ `out/sac/oni/oni_YYYYMMDD_HHMMSS.pth` と `out/sac/nige/nige_YYYYMMDD_HHMMSS.pth` に保存されます。
+
 ### `evaluate.py`
 
 | オプション | 説明 | デフォルト |
@@ -126,6 +128,8 @@ py train.py --episodes 1000 --render
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
 | `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--g` | GPU を利用する(利用可能な場合) | - |
+
+学習で生成されたモデルを評価する場合は、上記ディレクトリに保存されたファイルパスを `--oni-model` と `--nige-model` に指定してください。
 
 ### `evaluate_sac.py`
 
