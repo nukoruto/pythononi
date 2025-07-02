@@ -3,6 +3,9 @@ import os
 from datetime import datetime
 from typing import Tuple
 
+import pandas as pd
+import matplotlib.pyplot as plt
+
 import gymnasium as gym
 import numpy as np
 import time
@@ -232,6 +235,9 @@ def run_training(args: argparse.Namespace) -> None:
     oni_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
     nige_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim)
 
+    episode_rewards_oni: list[float] = []
+    episode_rewards_nige: list[float] = []
+
     output_dir = _timestamp_output_dir("out")
     oni_model_path = os.path.join(output_dir, args.oni_model)
     nige_model_path = os.path.join(output_dir, args.nige_model)
@@ -269,10 +275,29 @@ def run_training(args: argparse.Namespace) -> None:
             f"oni_reward={env.cumulative_rewards[0]:.2f} "
             f"nige_reward={env.cumulative_rewards[1]:.2f}"
         )
+        episode_rewards_oni.append(env.cumulative_rewards[0])
+        episode_rewards_nige.append(env.cumulative_rewards[1])
 
     oni.save(oni_model_path)
     nige.save(nige_model_path)
     env.close()
+
+    rewards_df = pd.DataFrame({
+        "episode": range(1, args.episodes + 1),
+        "oni_reward": episode_rewards_oni,
+        "nige_reward": episode_rewards_nige,
+    })
+    rewards_df.to_csv(os.path.join(output_dir, "rewards.csv"), index=False)
+
+    plt.figure()
+    plt.plot(rewards_df["episode"], rewards_df["oni_reward"], label="oni")
+    plt.plot(rewards_df["episode"], rewards_df["nige_reward"], label="nige")
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, "learning_curve.png"))
+    plt.close()
 
 
 def main():
