@@ -83,7 +83,6 @@ py train.py --episodes 1000 --render
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--timesteps <int>` | 各エピソードの学習ステップ数 | 10000 |
 | `--oni-model <path>` | 鬼モデルの保存/読み込みパス | `oni_policy.zip` |
 | `--nige-model <path>` | 逃げモデルの保存/読み込みパス | `nige_policy.zip` |
 | `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
@@ -103,7 +102,6 @@ py train.py --episodes 1000 --render
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--timesteps <int>` | 各エピソードの学習ステップ数 | 10000 |
 | `--oni-model <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
 | `--nige-model <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
 | `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
