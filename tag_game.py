@@ -342,7 +342,16 @@ class Agent:
             self.dir = pygame.Vector2(0, 0)
             self.speed_boost = 0.0
 
-    def update(self, stage: StageMap) -> None:
+    def update(self, stage: StageMap) -> bool:
+        """Update position and velocity.
+
+        Returns
+        -------
+        bool
+            ``True`` if a wall collision occurred during the update.
+        """
+        collided = False
+
         if self.dir.length_squared() > 0:
             accel = self.accel + self.speed_boost
             self.vel += self.dir * accel
@@ -359,14 +368,17 @@ class Agent:
             new_x = self.pos.x
             self.vel.x = 0
             self.speed_boost = 0.0
+            collided = True
 
         new_y = self.pos.y + self.vel.y
         if stage.collides_circle(new_x, new_y, radius):
             new_y = self.pos.y
             self.vel.y = 0
             self.speed_boost = 0.0
+            collided = True
 
         self.pos.update(new_x, new_y)
+        return collided
 
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         off_x, off_y = offset

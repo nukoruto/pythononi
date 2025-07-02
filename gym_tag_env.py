@@ -12,6 +12,7 @@ from stage_generator import generate_stage
 from tag_game import StageMap, Agent, CELL_SIZE
 
 INFO_PANEL_HEIGHT = 40
+COLLISION_PENALTY = 0.01
 
 
 class MultiTagEnv(gym.Env):
@@ -145,9 +146,13 @@ class MultiTagEnv(gym.Env):
         _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
 
         updates = max(1, int(round(self.speed_multiplier)))
+        collisions_oni = 0
+        collisions_nige = 0
         for _ in range(updates):
-            self.oni.update(self.stage)
-            self.nige.update(self.stage)
+            if self.oni.update(self.stage):
+                collisions_oni += 1
+            if self.nige.update(self.stage):
+                collisions_nige += 1
         self.physical_step_count += updates
 
         _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
@@ -182,6 +187,9 @@ class MultiTagEnv(gym.Env):
             else:
                 nige_reward = 0.0
             nige_reward += 0.01 * (-dist_delta) + 0.002 * updates
+
+        oni_reward -= COLLISION_PENALTY * collisions_oni
+        nige_reward -= COLLISION_PENALTY * collisions_nige
 
         # reward is computed for ``updates`` physical steps so that the
         # total reward does not shrink when ``speed_multiplier`` is large
