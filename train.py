@@ -4,6 +4,7 @@ import re
 import time
 
 import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -23,6 +24,7 @@ def parse_args():
     parser.add_argument("--render-interval", type=int, default=1, help="Render every N steps when --render is set")
     parser.add_argument("--duration", type=int, default=10, help="Training duration per episode in seconds")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
     parser.add_argument("--render-speed", type=float, default=1.0, help="Rendering speed multiplier")
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor for self-play")
@@ -38,6 +40,19 @@ def _create_env(args: argparse.Namespace) -> MultiTagEnv:
         speed_multiplier=args.speed_multiplier,
         render_speed=args.render_speed,
     )
+
+
+def _make_vec_env(args: argparse.Namespace) -> gym.vector.VectorEnv:
+    """Factory for vectorized environments."""
+
+    def _factory() -> MultiTagEnv:
+        return _create_env(args)
+
+    env_fns = [_factory for _ in range(args.num_envs)]
+    if args.num_envs > 1:
+        return gym.vector.AsyncVectorEnv(env_fns)
+    else:
+        return gym.vector.SyncVectorEnv(env_fns)
 class Policy(nn.Module):
     def __init__(self, input_dim: int = 3, hidden_dim: int = 64, output_dim: int = 2):
         super().__init__()
@@ -72,6 +87,16 @@ def compute_returns(rewards, gamma: float):
     return returns
 
 
+def compute_returns_batch(rewards: np.ndarray, gamma: float) -> np.ndarray:
+    """Compute discounted returns for batched rewards."""
+    returns = np.zeros_like(rewards)
+    R = np.zeros(rewards.shape[1], dtype=np.float32)
+    for t in reversed(range(len(rewards))):
+        R = rewards[t] + gamma * R
+        returns[t] = R
+    return returns
+
+
 def _next_output_path(base_dir: str, prefix: str) -> str:
     """Return next sequential path like ``prefix_N.pth`` under ``base_dir``."""
     os.makedirs(base_dir, exist_ok=True)
@@ -94,8 +119,8 @@ def run_selfplay(args: argparse.Namespace) -> None:
         print("GPU is not available. Falling back to CPU.")
     print(f"Using device: {device}")
 
-    env = _create_env(args)
-    input_dim = env.observation_space.shape[0]
+    env = _make_vec_env(args)
+    input_dim = env.single_observation_space[0].shape[0]
     oni_policy = Policy(input_dim=input_dim).to(device)
     nige_policy = Policy(input_dim=input_dim).to(device)
     oni_optim = optim.Adam(oni_policy.parameters(), lr=args.lr)
@@ -105,45 +130,54 @@ def run_selfplay(args: argparse.Namespace) -> None:
     nige_episode_rewards = []
 
     for ep in range(1, args.episodes + 1):
-        env.set_run_info(ep, args.episodes)
-        env.set_training_end_time(
-            time.time() + args.duration / args.speed_multiplier
+        env.env_method("set_run_info", ep, args.episodes)
+        env.env_method(
+            "set_training_end_time",
+            time.time() + args.duration / args.speed_multiplier,
         )
         obs, _ = env.reset()
         oni_obs, nige_obs = obs
-        oni_log_probs = []
-        oni_entropies = []
-        nige_log_probs = []
-        nige_entropies = []
-        oni_rewards = []
-        nige_rewards = []
-        done = False
-        while not done:
+        oni_log_probs: list[torch.Tensor] = []
+        oni_entropies: list[torch.Tensor] = []
+        nige_log_probs: list[torch.Tensor] = []
+        nige_entropies: list[torch.Tensor] = []
+        oni_rewards: list[np.ndarray] = []
+        nige_rewards: list[np.ndarray] = []
+        done = np.zeros(args.num_envs, dtype=bool)
+        while not done.all():
             oni_action, oni_logp, oni_ent = oni_policy.act(
                 torch.tensor(oni_obs, dtype=torch.float32, device=device)
             )
             nige_action, nige_logp, nige_ent = nige_policy.act(
                 torch.tensor(nige_obs, dtype=torch.float32, device=device)
             )
-            (oni_obs, nige_obs), (r_o, r_n), terminated, truncated, _ = env.step((
-                oni_action.detach().cpu().numpy(),
-                nige_action.detach().cpu().numpy(),
-            ))
+            (oni_obs, nige_obs), (r_o, r_n), terminated, truncated, _ = env.step(
+                (
+                    oni_action.detach().cpu().numpy(),
+                    nige_action.detach().cpu().numpy(),
+                )
+            )
             if args.render:
-                env.render()
+                env.envs[0].render()
             oni_log_probs.append(oni_logp)
             oni_entropies.append(oni_ent)
             nige_log_probs.append(nige_logp)
             nige_entropies.append(nige_ent)
             oni_rewards.append(r_o)
             nige_rewards.append(r_n)
-            done = terminated or truncated
+            done = np.logical_or(terminated, truncated)
 
+        oni_rewards_np = np.stack(oni_rewards)
+        nige_rewards_np = np.stack(nige_rewards)
         oni_returns = torch.tensor(
-            compute_returns(oni_rewards, args.gamma), dtype=torch.float32, device=device
+            compute_returns_batch(oni_rewards_np, args.gamma),
+            dtype=torch.float32,
+            device=device,
         )
         nige_returns = torch.tensor(
-            compute_returns(nige_rewards, args.gamma), dtype=torch.float32, device=device
+            compute_returns_batch(nige_rewards_np, args.gamma),
+            dtype=torch.float32,
+            device=device,
         )
         oni_entropy = torch.stack(oni_entropies)
         nige_entropy = torch.stack(nige_entropies)
@@ -155,7 +189,6 @@ def run_selfplay(args: argparse.Namespace) -> None:
             -(torch.stack(nige_log_probs) * nige_returns).sum()
             - args.entropy_coeff * nige_entropy.sum()
         )
-
         oni_optim.zero_grad()
         oni_loss.backward()
         oni_optim.step()

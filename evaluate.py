@@ -65,7 +65,7 @@ def main():
         speed_multiplier=args.speed_multiplier,
         render_speed=args.render_speed,
     )
-    input_dim = env.observation_space.shape[0]
+    input_dim = env.observation_space[0].shape[0]
     oni_model = Policy(input_dim=input_dim).to(device)
     oni_model.load_state_dict(torch.load(args.oni_model, map_location=device))
     oni_model.eval()
