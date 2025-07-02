@@ -104,7 +104,8 @@ class Actor(nn.Module):
         return y_t, log_prob
 
     def act(self, obs: np.ndarray) -> np.ndarray:
-        obs_t = torch.tensor(obs, dtype=torch.float32)
+        device = next(self.parameters()).device
+        obs_t = torch.tensor(obs, dtype=torch.float32, device=device)
         with torch.no_grad():
             action, _ = self.sample(obs_t.unsqueeze(0))
         return action.squeeze(0).cpu().numpy()
