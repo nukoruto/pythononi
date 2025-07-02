@@ -251,7 +251,11 @@ def run_training(args: argparse.Namespace) -> None:
                 nige.save(args.nige_model)
         if args.render:
             env.render()
-        print(f"Episode {ep} finished")
+        print(
+            f"Episode {ep} finished remaining_time={env.remaining_time:.2f}s "
+            f"oni_reward={env.cumulative_rewards[0]:.2f} "
+            f"nige_reward={env.cumulative_rewards[1]:.2f}"
+        )
 
     oni.save(args.oni_model)
     nige.save(args.nige_model)
