@@ -79,6 +79,7 @@ py train_sac.py --episodes 1000 --render
 | `--games <int>` | 連続対戦数 | 1 |
 | `--oni <path>` | 鬼側モデルのパス（指定すると逃げはプレイヤー操作） | - |
 | `--nige <path>` | 逃げ側モデルのパス（指定すると鬼はプレイヤー操作） | - |
+| `--g` | GPU を利用する(利用可能な場合) | - |
 
 ### `train_sac.py`
 

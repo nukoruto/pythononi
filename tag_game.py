@@ -92,7 +92,9 @@ class StageMap:
             num = (h_max - h_min) // 2 + 1
             height = int(h_min + 2 * int(self.rng.integers(0, num)))
 
-        self.grid = generate_stage(width, height, extra_wall_prob=extra_wall_prob, rng=self.rng)
+        self.grid = generate_stage(
+            width, height, extra_wall_prob=extra_wall_prob, rng=self.rng
+        )
         self.width = width
         self.height = height
 
@@ -124,7 +126,7 @@ class StageMap:
                 if self.is_wall(gx, gy):
                     closest_x = max(gx, min(x, gx + 1))
                     closest_y = max(gy, min(y, gy + 1))
-                    if (x - closest_x) ** 2 + (y - closest_y) ** 2 < radius ** 2:
+                    if (x - closest_x) ** 2 + (y - closest_y) ** 2 < radius**2:
                         return True
         return False
 
@@ -304,7 +306,12 @@ class StageMap:
                 pygame.draw.rect(
                     screen,
                     color,
-                    pygame.Rect(off_x + x * CELL_SIZE, off_y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
+                    pygame.Rect(
+                        off_x + x * CELL_SIZE,
+                        off_y + y * CELL_SIZE,
+                        CELL_SIZE,
+                        CELL_SIZE,
+                    ),
                 )
 
 
@@ -327,13 +334,14 @@ class Agent:
         self.radius = CELL_SIZE // 3
         self.speed_boost = 0.0
 
-
     def set_direction(self, dx: float, dy: float) -> None:
         v = pygame.Vector2(dx, dy)
         if v.length_squared() > 0:
             v_norm = v.normalize()
             if v_norm.dot(self.facing) > 0.99:
-                self.speed_boost = min(self.speed_boost + CONTINUOUS_ACCEL, MAX_SPEED_BOOST)
+                self.speed_boost = min(
+                    self.speed_boost + CONTINUOUS_ACCEL, MAX_SPEED_BOOST
+                )
             else:
                 self.speed_boost = 0.0
             self.dir = v_norm
@@ -380,6 +388,7 @@ class Agent:
         else:
             self.pos.update(new_x, new_y)
         return collided
+
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         off_x, off_y = offset
         pygame.draw.circle(
@@ -392,8 +401,6 @@ class Agent:
             self.radius,
         )
 
-
-
     def collides_with(self, other: "Agent") -> bool:
         center_self = pygame.Vector2(
             self.pos.x * CELL_SIZE,
@@ -405,9 +412,7 @@ class Agent:
         )
         return center_self.distance_to(center_other) < self.radius + other.radius
 
-    def observe(
-        self, other: "Agent", stage: StageMap | None = None
-    ) -> List[float]:
+    def observe(self, other: "Agent", stage: StageMap | None = None) -> List[float]:
         """Return vector toward ``other``.
 
         壁を考慮した最短経路方向を求める場合は ``stage`` を渡す。
@@ -473,6 +478,11 @@ def main():
         default=None,
         help="逃げ側モデルのパス（指定すると鬼はプレイヤー操作）",
     )
+    parser.add_argument(
+        "--g",
+        action="store_true",
+        help="GPU を利用する(利用可能な場合)",
+    )
     args = parser.parse_args()
 
     if (args.oni is None) == (args.nige is None):
@@ -495,7 +505,10 @@ def main():
         except Exception as e:
             raise SystemExit(f"invalid --height-range: {e}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
+    if args.g and device.type != "cuda":
+        print("GPU is not available. Falling back to CPU.")
+    print(f"Using device: {device}")
     oni_actor = None
     nige_actor = None
     if args.oni is not None:
@@ -568,9 +581,7 @@ def main():
             stage.draw(screen, offset)
             oni.draw(screen, offset)
             nige.draw(screen, offset)
-            stage.draw_shortest_path_vectors(
-                screen, oni.pos, nige.pos, offset=offset
-            )
+            stage.draw_shortest_path_vectors(screen, oni.pos, nige.pos, offset=offset)
             info = f"残り{remaining:.1f}秒  ({game + 1}/{args.games})"
             txt = font.render(info, True, (0, 0, 0))
             screen.blit(txt, (10, 5))
