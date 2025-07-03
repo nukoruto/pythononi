@@ -97,32 +97,28 @@ class StageMap:
         self.width = width
         self.height = height
 
-        # convert grid walls into polygons
+        # convert grid walls into polygons and store cell lists
         self.polygons: list[Polygon] = []
+        self.wall_cells: list[tuple[int, int]] = []
+        self.open_cells: list[tuple[int, int]] = []
         for y, row in enumerate(grid):
             for x, cell in enumerate(row):
                 if cell == 1:
                     self.polygons.append(box(x, y, x + 1, y + 1))
+                    self.wall_cells.append((x, y))
+                else:
+                    self.open_cells.append((x, y))
 
     def is_wall(self, x: int, y: int) -> bool:
         if not (0 <= x < self.width and 0 <= y < self.height):
             return True
-        cell = box(x, y, x + 1, y + 1)
-        for poly in self.polygons:
-            if poly.intersects(cell):
-                return True
-        return False
+        return (x, y) in self.wall_cells
 
     def random_open_position(self) -> pygame.Vector2:
         """Return a random free cell center as ``pygame.Vector2``."""
-        cells: list[tuple[int, int]] = []
-        for y in range(self.height):
-            for x in range(self.width):
-                if not self.is_wall(x, y):
-                    cells.append((x, y))
-        if not cells:
+        if not self.open_cells:
             raise ValueError("stage has no open cells")
-        cx, cy = cells[int(self.rng.integers(0, len(cells)))]
+        cx, cy = self.open_cells[int(self.rng.integers(0, len(self.open_cells)))]
         return pygame.Vector2(cx + 0.5, cy + 0.5)
 
     def collides_circle(self, x: float, y: float, radius: float) -> bool:
