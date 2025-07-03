@@ -1,6 +1,7 @@
 import math
 from typing import Tuple, List
 from shapely.geometry import Polygon, Point, box
+from shapely.strtree import STRtree
 
 import argparse
 import time
@@ -103,15 +104,13 @@ class StageMap:
             for x, cell in enumerate(row):
                 if cell == 1:
                     self.polygons.append(box(x, y, x + 1, y + 1))
+        self.str_tree = STRtree(self.polygons)
 
     def is_wall(self, x: int, y: int) -> bool:
         if not (0 <= x < self.width and 0 <= y < self.height):
             return True
         cell = box(x, y, x + 1, y + 1)
-        for poly in self.polygons:
-            if poly.intersects(cell):
-                return True
-        return False
+        return len(self.str_tree.query(cell, predicate="intersects")) > 0
 
     def random_open_position(self) -> pygame.Vector2:
         """Return a random free cell center as ``pygame.Vector2``."""
@@ -128,10 +127,7 @@ class StageMap:
     def collides_circle(self, x: float, y: float, radius: float) -> bool:
         """Return True if a circle (in grid units) intersects a wall."""
         circle = Point(x, y).buffer(radius)
-        for poly in self.polygons:
-            if poly.intersects(circle):
-                return True
-        return False
+        return len(self.str_tree.query(circle, predicate="intersects")) > 0
 
     def shortest_path(
         self, start: pygame.Vector2, goal: pygame.Vector2
