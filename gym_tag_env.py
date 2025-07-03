@@ -25,8 +25,8 @@ class MultiTagEnv(gym.Env):
 
     def __init__(
         self,
-        width: int = 31,
-        height: int = 21,
+        width: int = 73,
+        height: int = 51,
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
         speed_multiplier: float = 1.0,

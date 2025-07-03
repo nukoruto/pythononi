@@ -137,8 +137,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate and print a random stage")
-    parser.add_argument("--width", type=int, default=31, help="Stage width (odd number)")
-    parser.add_argument("--height", type=int, default=21, help="Stage height (odd number)")
+    parser.add_argument("--width", type=int, default=73, help="Stage width (odd number)")
+    parser.add_argument("--height", type=int, default=51, help="Stage height (odd number)")
     parser.add_argument(
         "--extra-wall-prob",
         type=float,
