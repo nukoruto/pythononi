@@ -1,5 +1,6 @@
 import math
 from typing import Tuple, List
+from shapely.geometry import Polygon, Point, box
 
 import argparse
 import time
@@ -92,14 +93,25 @@ class StageMap:
             num = (h_max - h_min) // 2 + 1
             height = int(h_min + 2 * int(self.rng.integers(0, num)))
 
-        self.grid = generate_stage(width, height, extra_wall_prob=extra_wall_prob, rng=self.rng)
+        grid = generate_stage(width, height, extra_wall_prob=extra_wall_prob, rng=self.rng)
         self.width = width
         self.height = height
+
+        # convert grid walls into polygons
+        self.polygons: list[Polygon] = []
+        for y, row in enumerate(grid):
+            for x, cell in enumerate(row):
+                if cell == 1:
+                    self.polygons.append(box(x, y, x + 1, y + 1))
 
     def is_wall(self, x: int, y: int) -> bool:
         if not (0 <= x < self.width and 0 <= y < self.height):
             return True
-        return self.grid[y][x] == 1
+        cell = box(x, y, x + 1, y + 1)
+        for poly in self.polygons:
+            if poly.intersects(cell):
+                return True
+        return False
 
     def random_open_position(self) -> pygame.Vector2:
         """Return a random free cell center as ``pygame.Vector2``."""
@@ -115,17 +127,10 @@ class StageMap:
 
     def collides_circle(self, x: float, y: float, radius: float) -> bool:
         """Return True if a circle (in grid units) intersects a wall."""
-        left = int(math.floor(x - radius))
-        right = int(math.floor(x + radius))
-        top = int(math.floor(y - radius))
-        bottom = int(math.floor(y + radius))
-        for gy in range(top, bottom + 1):
-            for gx in range(left, right + 1):
-                if self.is_wall(gx, gy):
-                    closest_x = max(gx, min(x, gx + 1))
-                    closest_y = max(gy, min(y, gy + 1))
-                    if (x - closest_x) ** 2 + (y - closest_y) ** 2 < radius ** 2:
-                        return True
+        circle = Point(x, y).buffer(radius)
+        for poly in self.polygons:
+            if poly.intersects(circle):
+                return True
         return False
 
     def shortest_path(
@@ -298,14 +303,17 @@ class StageMap:
         wall_color = (40, 40, 40)
         floor_color = (200, 200, 200)
         off_x, off_y = offset
-        for y, row in enumerate(self.grid):
-            for x, cell in enumerate(row):
-                color = wall_color if cell == 1 else floor_color
-                pygame.draw.rect(
-                    screen,
-                    color,
-                    pygame.Rect(off_x + x * CELL_SIZE, off_y + y * CELL_SIZE, CELL_SIZE, CELL_SIZE),
-                )
+        pygame.draw.rect(
+            screen,
+            floor_color,
+            pygame.Rect(off_x, off_y, self.width * CELL_SIZE, self.height * CELL_SIZE),
+        )
+        for poly in self.polygons:
+            pts = [
+                (off_x + x * CELL_SIZE, off_y + y * CELL_SIZE)
+                for x, y in poly.exterior.coords
+            ]
+            pygame.draw.polygon(screen, wall_color, pts)
 
 
 class Agent:
