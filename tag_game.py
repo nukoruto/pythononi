@@ -342,7 +342,9 @@ class Agent:
             self.dir = pygame.Vector2(0, 0)
             self.speed_boost = 0.0
 
-    def update(self, stage: StageMap) -> None:
+    def update(self, stage: StageMap) -> bool:
+        """Update agent position and return True if it collided with a wall."""
+        collided = False
         if self.dir.length_squared() > 0:
             accel = self.accel + self.speed_boost
             self.vel += self.dir * accel
@@ -358,6 +360,7 @@ class Agent:
         new_y = self.pos.y + self.vel.y
 
         if stage.collides_circle(new_x, new_y, radius):
+            collided = True
             # 角にぶつかった場合のスライド処理
             if not stage.collides_circle(new_x, self.pos.y, radius):
                 # X 方向のみ移動可能
@@ -376,7 +379,7 @@ class Agent:
                 self.speed_boost = 0.0
         else:
             self.pos.update(new_x, new_y)
-
+        return collided
     def draw(self, screen: pygame.Surface, offset: Tuple[int, int] = (0, 0)) -> None:
         off_x, off_y = offset
         pygame.draw.circle(
