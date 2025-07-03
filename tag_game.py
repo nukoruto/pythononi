@@ -479,7 +479,7 @@ def main():
         raise SystemExit("--oni または --nige のどちらか一方を指定してください")
 
     pygame.init()
-    width, height = 31, 21
+    width, height = 73, 51
     width_range = None
     height_range = None
     if args.width_range:
