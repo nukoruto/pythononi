@@ -182,7 +182,8 @@ class MultiTagEnv(gym.Env):
         else:
             oni_reward = -0.005 * updates + 0.01 * dist_delta
             if truncated:
-                nige_reward = 1.0
+                nige_reward = 2.0
+                oni_reward -= 1.0
             else:
                 nige_reward = 0.0
             nige_reward += 0.01 * (-dist_delta) + 0.002 * updates
