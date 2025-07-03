@@ -51,6 +51,7 @@ class Actor(torch.nn.Module):
 
 
 CELL_SIZE = 20
+DRAW_SCALE = 0.1
 EXTRA_WALL_PROB = 0.1
 INFO_PANEL_HEIGHT = 40
 DEFAULT_DURATION = 10.0
@@ -154,25 +155,36 @@ class StageMap:
         if start_cell == goal_cell:
             return [start_cell]
 
-        from collections import deque
+        import heapq
 
-        queue: deque[tuple[int, int]] = deque([start_cell])
+        open_set: list[tuple[int, tuple[int, int]]] = []
+        heapq.heappush(open_set, (0, start_cell))
+        g_score: dict[tuple[int, int], int] = {start_cell: 0}
         parents: dict[tuple[int, int], tuple[int, int] | None] = {start_cell: None}
 
-        while queue:
-            cx, cy = queue.popleft()
-            if (cx, cy) == goal_cell:
+        def heuristic(a: tuple[int, int], b: tuple[int, int]) -> int:
+            return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+        closed: set[tuple[int, int]] = set()
+
+        while open_set:
+            _, current = heapq.heappop(open_set)
+            if current in closed:
+                continue
+            if current == goal_cell:
                 break
+            closed.add(current)
+            cx, cy = current
             for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                 nx, ny = cx + dx, cy + dy
-                if (
-                    0 <= nx < self.width
-                    and 0 <= ny < self.height
-                    and not self.is_wall(nx, ny)
-                    and (nx, ny) not in parents
-                ):
-                    parents[(nx, ny)] = (cx, cy)
-                    queue.append((nx, ny))
+                if 0 <= nx < self.width and 0 <= ny < self.height and not self.is_wall(nx, ny):
+                    neighbor = (nx, ny)
+                    tentative_g = g_score[current] + 1
+                    if tentative_g < g_score.get(neighbor, 1_000_000_000):
+                        g_score[neighbor] = tentative_g
+                        f = tentative_g + heuristic(neighbor, goal_cell)
+                        heapq.heappush(open_set, (f, neighbor))
+                        parents[neighbor] = current
 
         if goal_cell not in parents:
             return []
@@ -283,14 +295,14 @@ class StageMap:
         off_x, off_y = offset
         pos = pygame.Vector2(int(start.x) + 0.5, int(start.y) + 0.5)
         prev_px = (
-            off_x + pos.x * CELL_SIZE,
-            off_y + pos.y * CELL_SIZE,
+            off_x + pos.x * CELL_SIZE * DRAW_SCALE,
+            off_y + pos.y * CELL_SIZE * DRAW_SCALE,
         )
         for vec in vectors:
             pos += vec
             next_px = (
-                off_x + pos.x * CELL_SIZE,
-                off_y + pos.y * CELL_SIZE,
+                off_x + pos.x * CELL_SIZE * DRAW_SCALE,
+                off_y + pos.y * CELL_SIZE * DRAW_SCALE,
             )
             pygame.draw.line(screen, color, prev_px, next_px, 2)
             prev_px = next_px
@@ -302,11 +314,19 @@ class StageMap:
         pygame.draw.rect(
             screen,
             floor_color,
-            pygame.Rect(off_x, off_y, self.width * CELL_SIZE, self.height * CELL_SIZE),
+            pygame.Rect(
+                off_x,
+                off_y,
+                int(self.width * CELL_SIZE * DRAW_SCALE),
+                int(self.height * CELL_SIZE * DRAW_SCALE),
+            ),
         )
         for poly in self.polygons:
             pts = [
-                (off_x + x * CELL_SIZE, off_y + y * CELL_SIZE)
+                (
+                    off_x + x * CELL_SIZE * DRAW_SCALE,
+                    off_y + y * CELL_SIZE * DRAW_SCALE,
+                )
                 for x, y in poly.exterior.coords
             ]
             pygame.draw.polygon(screen, wall_color, pts)
@@ -390,10 +410,10 @@ class Agent:
             screen,
             self.color,
             (
-                int(off_x + self.pos.x * CELL_SIZE),
-                int(off_y + self.pos.y * CELL_SIZE),
+                int(off_x + self.pos.x * CELL_SIZE * DRAW_SCALE),
+                int(off_y + self.pos.y * CELL_SIZE * DRAW_SCALE),
             ),
-            self.radius,
+            max(1, int(self.radius * DRAW_SCALE)),
         )
 
 
@@ -483,7 +503,7 @@ def main():
         raise SystemExit("--oni または --nige のどちらか一方を指定してください")
 
     pygame.init()
-    width, height = 31, 21
+    width, height = 255, 255
     width_range = None
     height_range = None
     if args.width_range:
@@ -524,7 +544,10 @@ def main():
         width, height = stage.width, stage.height
 
         screen = pygame.display.set_mode(
-            (width * CELL_SIZE, height * CELL_SIZE + INFO_PANEL_HEIGHT)
+            (
+                int(width * CELL_SIZE * DRAW_SCALE),
+                int(height * CELL_SIZE * DRAW_SCALE) + INFO_PANEL_HEIGHT,
+            )
         )
         clock = pygame.time.Clock()
         font = pygame.font.SysFont(None, 24)
@@ -566,7 +589,12 @@ def main():
             pygame.draw.rect(
                 screen,
                 (255, 255, 255),
-                pygame.Rect(0, 0, width * CELL_SIZE, INFO_PANEL_HEIGHT),
+                pygame.Rect(
+                    0,
+                    0,
+                    int(width * CELL_SIZE * DRAW_SCALE),
+                    INFO_PANEL_HEIGHT,
+                ),
             )
             offset = (0, INFO_PANEL_HEIGHT)
             stage.draw(screen, offset)
@@ -584,8 +612,8 @@ def main():
                 text = font_big.render("Caught!", True, (255, 0, 0))
                 rect = text.get_rect(
                     center=(
-                        width * CELL_SIZE // 2,
-                        height * CELL_SIZE // 2 + INFO_PANEL_HEIGHT // 2,
+                        int(width * CELL_SIZE * DRAW_SCALE) // 2,
+                        int(height * CELL_SIZE * DRAW_SCALE) // 2 + INFO_PANEL_HEIGHT // 2,
                     )
                 )
                 screen.blit(text, rect)

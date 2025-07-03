@@ -9,10 +9,10 @@
 ## ステージ生成
 
 ```bash
-python3 stage_generator.py --width 31 --height 21
+python3 stage_generator.py --width 255 --height 255
 ```
 
-実行すると固定サイズ（例: 31x21）のステージが標準出力に表示されます。
+実行すると固定サイズ（例: 255x255）のステージが標準出力に表示されます。
 `generate_stage` 関数に幅・高さを指定することで別サイズのステージも生成可能です。
 ステージには行き止まりが存在せず、孤立したエリアも生じないよう接続性を保ったまま生成されます。道幅はランダムで広げられます。
 壁密度を高めたい場合は `--extra-wall-prob` オプションで値を指定します。デフォルトは
@@ -48,7 +48,7 @@ py tag_game.py
 壁を回避した最短経路が緑色の線で表示されます。ステージはポリゴン障害物として
 描画され、
 ステージサイズはデフォルトで
-31x21 ですが、`--width-range` と `--height-range` を指定するとその範囲から
+255x255 ですが、`--width-range` と `--height-range` を指定するとその範囲から
 ランダムに奇数が選ばれます。
 
 また、強化学習向けには `gym_tag_env.py` に `MultiTagEnv` クラスを実装しています。`reset()` でステージとエージェントを再初期化し、`step()` では鬼と逃げのアクションをタプルで与え、観測と報酬も `(鬼, 逃げ)` のタプルで返されます。初期位置は毎回ランダムに選ばれ、必要に応じて `start_distance_range` で互いの距離を制約できます。逃げ側の報酬は捕まったら `-1`、時間いっぱい逃げ切ったら `+1` です。現在の実装では、直線距離ではなく最短経路長の変化を用いて追加報酬を与えます。
@@ -57,7 +57,7 @@ py tag_game.py
 その経路を構成する方向ベクトル列を取得するには `shortest_path_vectors` を利用します。
 
 ```python
-stage = StageMap(31, 21)
+stage = StageMap(255, 255)
 start = pygame.Vector2(1, 1)
 goal = pygame.Vector2(10, 10)
 vectors = stage.shortest_path_vectors(start, goal)

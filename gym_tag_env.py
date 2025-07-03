@@ -9,7 +9,7 @@ import numpy as np
 import pygame
 
 from stage_generator import generate_stage
-from tag_game import StageMap, Agent, CELL_SIZE
+from tag_game import StageMap, Agent, CELL_SIZE, DRAW_SCALE
 
 INFO_PANEL_HEIGHT = 40
 
@@ -25,8 +25,8 @@ class MultiTagEnv(gym.Env):
 
     def __init__(
         self,
-        width: int = 31,
-        height: int = 21,
+        width: int = 255,
+        height: int = 255,
         max_steps: int = 500,
         extra_wall_prob: float = 0.0,
         speed_multiplier: float = 1.0,
@@ -94,7 +94,10 @@ class MultiTagEnv(gym.Env):
         self.height = self.stage.height
         if self.screen is not None:
             self.screen = pygame.display.set_mode(
-                (self.width * CELL_SIZE, self.height * CELL_SIZE + INFO_PANEL_HEIGHT)
+                (
+                    int(self.width * CELL_SIZE * DRAW_SCALE),
+                    int(self.height * CELL_SIZE * DRAW_SCALE) + INFO_PANEL_HEIGHT,
+                )
             )
         oni_pos = self.stage.random_open_position()
         nige_pos = self.stage.random_open_position()
@@ -206,7 +209,10 @@ class MultiTagEnv(gym.Env):
         if self.screen is None:
             pygame.init()
             self.screen = pygame.display.set_mode(
-                (self.width * CELL_SIZE, self.height * CELL_SIZE + INFO_PANEL_HEIGHT)
+                (
+                    int(self.width * CELL_SIZE * DRAW_SCALE),
+                    int(self.height * CELL_SIZE * DRAW_SCALE) + INFO_PANEL_HEIGHT,
+                )
             )
             self.clock = pygame.time.Clock()
         assert self.stage and self.oni and self.nige
@@ -219,7 +225,12 @@ class MultiTagEnv(gym.Env):
         pygame.draw.rect(
             self.screen,
             (255, 255, 255),
-            pygame.Rect(0, 0, self.width * CELL_SIZE, INFO_PANEL_HEIGHT),
+            pygame.Rect(
+                0,
+                0,
+                int(self.width * CELL_SIZE * DRAW_SCALE),
+                INFO_PANEL_HEIGHT,
+            ),
         )
         offset = (0, INFO_PANEL_HEIGHT)
         self.stage.draw(self.screen, offset)
