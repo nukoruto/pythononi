@@ -145,9 +145,13 @@ class MultiTagEnv(gym.Env):
         _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
 
         updates = max(1, int(round(self.speed_multiplier)))
+        oni_collisions = 0
+        nige_collisions = 0
         for _ in range(updates):
-            self.oni.update(self.stage)
-            self.nige.update(self.stage)
+            if self.oni.update(self.stage):
+                oni_collisions += 1
+            if self.nige.update(self.stage):
+                nige_collisions += 1
         self.physical_step_count += updates
 
         _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
@@ -182,6 +186,10 @@ class MultiTagEnv(gym.Env):
             else:
                 nige_reward = 0.0
             nige_reward += 0.01 * (-dist_delta) + 0.002 * updates
+
+        # small penalty for wall collisions
+        oni_reward -= 0.001 * oni_collisions
+        nige_reward -= 0.001 * nige_collisions
 
         # reward is computed for ``updates`` physical steps so that the
         # total reward does not shrink when ``speed_multiplier`` is large
