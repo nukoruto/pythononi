@@ -713,18 +713,26 @@ def main():
         print("観戦モードで実行します")
     oni_actor = None
     nige_actor = None
-    actor_cls = CNNActor if args.use_cnn else Actor
-    obs_dim = 11 if args.use_cnn else 3
+    def load_actor(path: str) -> tuple[torch.nn.Module, bool]:
+        state = torch.load(path, map_location=device)
+        sd = state["actor"] if "actor" in state else state
+        is_cnn = any(k.startswith("encoder.") for k in sd.keys())
+        cls = CNNActor if is_cnn else Actor
+        obs_dim = 11 if is_cnn else 3
+        actor = cls(obs_dim, 2).to(device)
+        actor.load_state_dict(sd)
+        actor.eval()
+        return actor, is_cnn
+
+    use_cnn = args.use_cnn
+    oni_cnn = False
+    nige_cnn = False
     if args.oni is not None:
-        oni_actor = actor_cls(obs_dim, 2).to(device)
-        state = torch.load(args.oni, map_location=device)
-        oni_actor.load_state_dict(state["actor"] if "actor" in state else state)
-        oni_actor.eval()
+        oni_actor, oni_cnn = load_actor(args.oni)
+        use_cnn = use_cnn or oni_cnn
     if args.nige is not None:
-        nige_actor = actor_cls(obs_dim, 2).to(device)
-        state = torch.load(args.nige, map_location=device)
-        nige_actor.load_state_dict(state["actor"] if "actor" in state else state)
-        nige_actor.eval()
+        nige_actor, nige_cnn = load_actor(args.nige)
+        use_cnn = use_cnn or nige_cnn
 
     for game in range(args.games):
         stage = StageMap(
@@ -778,8 +786,9 @@ def main():
             pdx = keys[pygame.K_d] - keys[pygame.K_a]
             pdy = keys[pygame.K_s] - keys[pygame.K_w]
 
-            if args.use_cnn:
-                (oni_vec, oni_tensor), (nige_vec, nige_tensor) = get_state_cnn(
+            oni_vec_simple, nige_vec_simple = get_state(oni, nige, stage)
+            if use_cnn:
+                (oni_vec_cnn, oni_tensor), (nige_vec_cnn, nige_tensor) = get_state_cnn(
                     oni,
                     nige,
                     stage,
@@ -790,23 +799,21 @@ def main():
                     step_count,
                     int(args.duration * 60),
                 )
-            else:
-                oni_vec, nige_vec = get_state(oni, nige, stage)
 
             if oni_actor is not None:
-                if args.use_cnn:
-                    act = oni_actor.act(oni_vec, oni_tensor)
+                if oni_cnn:
+                    act = oni_actor.act(oni_vec_cnn, oni_tensor)
                 else:
-                    act = oni_actor.act(np.array(oni_vec, dtype=np.float32))
+                    act = oni_actor.act(np.array(oni_vec_simple, dtype=np.float32))
                 oni.set_direction(float(act[0]), float(act[1]))
             else:
                 oni.set_direction(pdx, pdy)
 
             if nige_actor is not None:
-                if args.use_cnn:
-                    act = nige_actor.act(nige_vec, nige_tensor)
+                if nige_cnn:
+                    act = nige_actor.act(nige_vec_cnn, nige_tensor)
                 else:
-                    act = nige_actor.act(np.array(nige_vec, dtype=np.float32))
+                    act = nige_actor.act(np.array(nige_vec_simple, dtype=np.float32))
                 nige.set_direction(float(act[0]), float(act[1]))
             else:
                 # if spectator_mode is True, no player input is used
