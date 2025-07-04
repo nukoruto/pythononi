@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate")
     parser.add_argument("--batch-size", type=int, default=256, help="Mini batch size")
-    parser.add_argument("--buffer-size", type=int, default=100000, help="Replay buffer size")
+    parser.add_argument("--buffer-size", type=int, default=10000, help="Replay buffer size")
     parser.add_argument("--tau", type=float, default=0.005, help="Target update coefficient")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
     parser.add_argument("--use-cnn", action="store_true", help="Use CNN-based models")
