@@ -20,8 +20,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Soft Actor-Critic training for MultiTagEnv"
     )
-    parser.add_argument("--oni-model", type=str, default="oni_sac.pth", help="Path to save oni model")
-    parser.add_argument("--nige-model", type=str, default="nige_sac.pth", help="Path to save nige model")
+    parser.add_argument("--oni", type=str, default="oni_sac.pth", help="Path to save oni model")
+    parser.add_argument("--nige", type=str, default="nige_sac.pth", help="Path to save nige model")
     parser.add_argument("--checkpoint-freq", type=int, default=0, help="Save checkpoints every N steps")
     parser.add_argument("--render", action="store_true", help="Render environment during training")
     parser.add_argument("--render-interval", type=int, default=1, help="Render every N steps")
@@ -238,8 +238,8 @@ def run_training(args: argparse.Namespace) -> None:
     episode_rewards_nige: list[float] = []
 
     output_dir = _timestamp_output_dir("out")
-    oni_model_path = os.path.join(output_dir, args.oni_model)
-    nige_model_path = os.path.join(output_dir, args.nige_model)
+    oni_model_path = os.path.join(output_dir, args.oni)
+    nige_model_path = os.path.join(output_dir, args.nige)
 
     total_steps = 0
     for ep in range(1, args.episodes + 1):
