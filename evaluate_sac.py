@@ -16,18 +16,20 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate SAC trained agents")
     parser.add_argument("--oni", type=str, default="oni_sac.pth", help="Oni model path")
     parser.add_argument("--nige", type=str, default="nige_sac.pth", help="Nige model path")
-    parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
-    parser.add_argument("--render", action="store_true", help="Render environment")
-    parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
-    parser.add_argument("--render-speed", type=float, default=1.0, help="Rendering speed multiplier")
-    parser.add_argument("--g", action="store_true", help="Use GPU if available")
+    parser.add_argument("--eps", "--episodes", dest="episodes", type=int, default=10, help="Number of episodes")
+    parser.add_argument("--draw", "--render", dest="render", action="store_true", help="Render environment")
+    parser.add_argument("--speed", "--speed-multiplier", dest="speed_multiplier", type=float, default=1.0, help="Environment speed multiplier")
+    parser.add_argument("--draw-speed", "--render-speed", dest="render_speed", type=float, default=1.0, help="Rendering speed multiplier")
+    parser.add_argument("--gpu", "--g", dest="g", action="store_true", help="Use GPU if available")
     parser.add_argument(
+        "--out",
         "--output-dir",
+        dest="output_dir",
         type=str,
         default="eval",
         help="Base directory to store evaluation logs",
     )
-    parser.add_argument("--use-cnn", action="store_true", help="Use CNN-based models")
+    parser.add_argument("--cnn", "--use-cnn", dest="use_cnn", action="store_true", help="Use CNN-based models")
     return parser.parse_args()
 
 
