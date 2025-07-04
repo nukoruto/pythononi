@@ -9,7 +9,7 @@ import numpy as np
 import pygame
 
 from stage_generator import generate_stage
-from tag_game import StageMap, Agent, CELL_SIZE
+from tag_game import StageMap, Agent, CELL_SIZE, MAX_SPEED_BOOST
 
 INFO_PANEL_HEIGHT = 40
 
@@ -43,8 +43,38 @@ class MultiTagEnv(gym.Env):
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
-        low = np.array([-1.0, -1.0, 0.0], dtype=np.float32)
-        high = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        low = np.array(
+            [
+                -1.0,
+                -1.0,
+                -1.0,
+                -1.0,
+                0.0,
+                -1.0,
+                -1.0,
+                0.0,
+                -1.0,
+                -1.0,
+                0.0,
+            ],
+            dtype=np.float32,
+        )
+        high = np.array(
+            [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+            ],
+            dtype=np.float32,
+        )
         self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.step_count = 0
@@ -62,6 +92,54 @@ class MultiTagEnv(gym.Env):
         self.start_distance_range = start_distance_range
         self.width_range = width_range
         self.height_range = height_range
+
+    def _make_obs(
+        self,
+        agent: Agent,
+        opponent: Agent,
+        collided: bool,
+    ) -> np.ndarray:
+        """Return normalized observation vector for ``agent``."""
+        assert self.stage
+        # position normalized to [-1, 1]
+        px = agent.pos.x / self.stage.width * 2.0 - 1.0
+        py = agent.pos.y / self.stage.height * 2.0 - 1.0
+
+        # velocity normalized to [-1, 1]
+        v_scale = agent.max_speed + MAX_SPEED_BOOST
+        vx = np.clip(agent.vel.x / v_scale, -1.0, 1.0)
+        vy = np.clip(agent.vel.y / v_scale, -1.0, 1.0)
+
+        collision = 1.0 if collided else 0.0
+
+        direction, dist = self.stage.shortest_path_info(agent.pos, opponent.pos)
+        max_dist = self.stage.width + self.stage.height
+        dist_norm = min(dist / max_dist, 1.0)
+
+        ov_scale = opponent.max_speed + MAX_SPEED_BOOST
+        ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
+        ovy = np.clip(opponent.vel.y / ov_scale, -1.0, 1.0)
+
+        remain_ratio = max(
+            0.0, 1.0 - self.physical_step_count / float(self.max_steps)
+        )
+
+        return np.array(
+            [
+                px,
+                py,
+                vx,
+                vy,
+                collision,
+                direction.x,
+                direction.y,
+                dist_norm,
+                ovx,
+                ovy,
+                remain_ratio,
+            ],
+            dtype=np.float32,
+        )
 
     def set_run_info(self, current_run: int, total_runs: int) -> None:
         """Set current episode index and total runs for rendering."""
@@ -117,8 +195,8 @@ class MultiTagEnv(gym.Env):
             self.oni.pos, self.nige.pos
         )
         obs = (
-            np.array(self.oni.observe(self.nige, self.stage), dtype=np.float32),
-            np.array(self.nige.observe(self.oni, self.stage), dtype=np.float32),
+            self._make_obs(self.oni, self.nige, False),
+            self._make_obs(self.nige, self.oni, False),
         )
         return obs, {}
 
@@ -158,12 +236,8 @@ class MultiTagEnv(gym.Env):
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
 
-        oni_obs = np.array(
-            self.oni.observe(self.nige, self.stage), dtype=np.float32
-        )
-        nige_obs = np.array(
-            self.nige.observe(self.oni, self.stage), dtype=np.float32
-        )
+        oni_obs = self._make_obs(self.oni, self.nige, oni_collisions > 0)
+        nige_obs = self._make_obs(self.nige, self.oni, nige_collisions > 0)
 
         terminated = self.oni.collides_with(self.nige)
         use_step_limit = self.training_end_time is None
