@@ -7,6 +7,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import pygame
+import torch
 
 from stage_generator import generate_stage
 from tag_game import StageMap, Agent, CELL_SIZE, MAX_SPEED_BOOST
@@ -92,6 +93,8 @@ class MultiTagEnv(gym.Env):
         self.start_distance_range = start_distance_range
         self.width_range = width_range
         self.height_range = height_range
+        self.oni_history: list[tuple[float, float]] = []
+        self.nige_history: list[tuple[float, float]] = []
 
     def _make_obs(
         self,
@@ -141,6 +144,100 @@ class MultiTagEnv(gym.Env):
             dtype=np.float32,
         )
 
+    def build_obs_tensor(
+        self,
+        agent: Agent,
+        opponent: Agent,
+        collided: bool,
+        history: list[tuple[float, float]],
+        remain_ratio: float,
+    ) -> torch.Tensor:
+        """Return multi-channel observation tensor for CNN input."""
+        assert self.stage
+        h, w = self.stage.height, self.stage.width
+        tensor = np.zeros((15, h, w), dtype=np.float32)
+
+        # channel 0: walls
+        tensor[0] = np.array(self.stage.grid, dtype=np.float32)
+
+        ax, ay = int(agent.pos.x), int(agent.pos.y)
+        ox, oy = int(opponent.pos.x), int(opponent.pos.y)
+
+        # channel 1: agent position
+        if 0 <= ax < w and 0 <= ay < h:
+            tensor[1, ay, ax] = 1.0
+
+        v_scale = agent.max_speed + MAX_SPEED_BOOST
+        vx = np.clip(agent.vel.x / v_scale, -1.0, 1.0)
+        vy = np.clip(agent.vel.y / v_scale, -1.0, 1.0)
+        tensor[2].fill(vx)
+        tensor[3].fill(vy)
+
+        # channel 4: opponent position
+        if 0 <= ox < w and 0 <= oy < h:
+            tensor[4, oy, ox] = 1.0
+
+        ov_scale = opponent.max_speed + MAX_SPEED_BOOST
+        ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
+        ovy = np.clip(opponent.vel.y / ov_scale, -1.0, 1.0)
+        tensor[5].fill(ovx)
+        tensor[6].fill(ovy)
+
+        # channel 7: collision flag
+        if collided and 0 <= ax < w and 0 <= ay < h:
+            tensor[7, ay, ax] = 1.0
+
+        # channel 8-9: contact vector (approximate using -dir)
+        if collided:
+            tensor[8].fill(-agent.dir.x)
+            tensor[9].fill(-agent.dir.y)
+
+        # channel 10: remaining time ratio
+        tensor[10].fill(remain_ratio)
+
+        max_range = self.stage.width + self.stage.height
+        tensor[11].fill((opponent.pos.x - agent.pos.x) / max_range)
+        tensor[12].fill((opponent.pos.y - agent.pos.y) / max_range)
+
+        # channel 13: predicted opponent position after two steps
+        pred_x = int(opponent.pos.x + opponent.vel.x * 2)
+        pred_y = int(opponent.pos.y + opponent.vel.y * 2)
+        if 0 <= pred_x < w and 0 <= pred_y < h:
+            tensor[13, pred_y, pred_x] = 1.0
+
+        # channel 14: movement history
+        for idx, (hx, hy) in enumerate(reversed(history[-5:])):
+            weight = (5 - idx) / 5.0
+            hx_i, hy_i = int(hx), int(hy)
+            if 0 <= hx_i < w and 0 <= hy_i < h:
+                tensor[14, hy_i, hx_i] = weight
+
+        return torch.tensor(tensor, dtype=torch.float32)
+
+    def _get_obs(self, oni_collided: bool, nige_collided: bool):
+        """Return vector and tensor observations for both agents."""
+        assert self.oni and self.nige and self.stage
+        remain_ratio = max(
+            0.0, 1.0 - self.physical_step_count / float(self.max_steps)
+        )
+        oni_vec = self._make_obs(self.oni, self.nige, oni_collided)
+        nige_vec = self._make_obs(self.nige, self.oni, nige_collided)
+        oni_tensor = self.build_obs_tensor(
+            self.oni,
+            self.nige,
+            oni_collided,
+            self.oni_history,
+            remain_ratio,
+        )
+        nige_tensor = self.build_obs_tensor(
+            self.nige,
+            self.oni,
+            nige_collided,
+            self.nige_history,
+            remain_ratio,
+        )
+        return (oni_vec, oni_tensor), (nige_vec, nige_tensor)
+
     def set_run_info(self, current_run: int, total_runs: int) -> None:
         """Set current episode index and total runs for rendering."""
         self.current_run = current_run
@@ -187,6 +284,8 @@ class MultiTagEnv(gym.Env):
                 tries += 1
         self.oni = Agent(oni_pos.x, oni_pos.y, (255, 0, 0))
         self.nige = Agent(nige_pos.x, nige_pos.y, (0, 100, 255))
+        self.oni_history = [(self.oni.pos.x, self.oni.pos.y)]
+        self.nige_history = [(self.nige.pos.x, self.nige.pos.y)]
         self.step_count = 0
         self.physical_step_count = 0
         self.cumulative_rewards = [0.0, 0.0]
@@ -194,11 +293,11 @@ class MultiTagEnv(gym.Env):
         _, self.prev_distance = self.stage.shortest_path_info(
             self.oni.pos, self.nige.pos
         )
-        obs = (
-            self._make_obs(self.oni, self.nige, False),
-            self._make_obs(self.nige, self.oni, False),
-        )
-        return obs, {}
+        obs = self._get_obs(False, False)
+        return obs, {
+            "oni_tensor": obs[0][1],
+            "nige_tensor": obs[1][1],
+        }
 
     def step(
         self, actions: tuple[np.ndarray, np.ndarray]
@@ -236,8 +335,15 @@ class MultiTagEnv(gym.Env):
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
 
-        oni_obs = self._make_obs(self.oni, self.nige, oni_collisions > 0)
-        nige_obs = self._make_obs(self.nige, self.oni, nige_collisions > 0)
+        self.oni_history.append((self.oni.pos.x, self.oni.pos.y))
+        self.nige_history.append((self.nige.pos.x, self.nige.pos.y))
+        self.oni_history = self.oni_history[-5:]
+        self.nige_history = self.nige_history[-5:]
+
+        (oni_obs, oni_tensor), (nige_obs, nige_tensor) = self._get_obs(
+            oni_collisions > 0,
+            nige_collisions > 0,
+        )
 
         terminated = self.oni.collides_with(self.nige)
         use_step_limit = self.training_end_time is None
@@ -276,7 +382,10 @@ class MultiTagEnv(gym.Env):
         self.cumulative_rewards[0] += oni_reward
         self.cumulative_rewards[1] += nige_reward
 
-        info = {}
+        info = {
+            "oni_tensor": oni_tensor,
+            "nige_tensor": nige_tensor,
+        }
         return (oni_obs, nige_obs), (oni_reward, nige_reward), terminated, truncated, info
 
     def render(self) -> None:
