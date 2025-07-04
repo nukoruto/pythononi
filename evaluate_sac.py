@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 
-from train_sac import Actor
+from train_sac import Actor, CNNActor
 from gym_tag_env import MultiTagEnv
 
 
@@ -27,6 +27,7 @@ def parse_args():
         default="eval",
         help="Base directory to store evaluation logs",
     )
+    parser.add_argument("--use-cnn", action="store_true", help="Use CNN-based models")
     return parser.parse_args()
 
 
@@ -43,15 +44,24 @@ def run_episode(
     oni_actor: Actor,
     nige_actor: Actor,
     render: bool,
+    use_cnn: bool,
 ) -> Tuple[float, float]:
-    obs, _ = env.reset()
+    obs, info = env.reset()
     oni_obs, nige_obs = obs
+    oni_tensor = info["oni_tensor"]
+    nige_tensor = info["nige_tensor"]
     done = False
     total_rewards = [0.0, 0.0]
     while not done:
-        oni_action = oni_actor.act(oni_obs)
-        nige_action = nige_actor.act(nige_obs)
-        (oni_obs, nige_obs), (r_on, r_ni), terminated, truncated, _ = env.step((oni_action, nige_action))
+        if use_cnn:
+            oni_action = oni_actor.act(oni_obs, oni_tensor)
+            nige_action = nige_actor.act(nige_obs, nige_tensor)
+        else:
+            oni_action = oni_actor.act(oni_obs)
+            nige_action = nige_actor.act(nige_obs)
+        (oni_obs, nige_obs), (r_on, r_ni), terminated, truncated, info = env.step((oni_action, nige_action))
+        oni_tensor = info["oni_tensor"]
+        nige_tensor = info["nige_tensor"]
         done = terminated or truncated
         total_rewards[0] += r_on
         total_rewards[1] += r_ni
@@ -78,12 +88,13 @@ def main():
     obs_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 
-    oni_actor = Actor(obs_dim, action_dim).to(device)
+    actor_cls = CNNActor if args.use_cnn else Actor
+    oni_actor = actor_cls(obs_dim, action_dim).to(device)
     oni_state = torch.load(args.oni, map_location=device)
     oni_actor.load_state_dict(oni_state["actor"])
     oni_actor.eval()
 
-    nige_actor = Actor(obs_dim, action_dim).to(device)
+    nige_actor = actor_cls(obs_dim, action_dim).to(device)
     nige_state = torch.load(args.nige, map_location=device)
     nige_actor.load_state_dict(nige_state["actor"])
     nige_actor.eval()
@@ -93,7 +104,7 @@ def main():
     for i in range(args.episodes):
         env.set_run_info(i + 1, args.episodes)
         env.set_training_end_time(None)
-        rewards.append(run_episode(env, oni_actor, nige_actor, args.render))
+        rewards.append(run_episode(env, oni_actor, nige_actor, args.render, args.use_cnn))
 
     env.close()
 
