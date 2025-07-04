@@ -57,6 +57,17 @@ DEFAULT_DURATION = 10.0
 CONTINUOUS_ACCEL = 0.01
 MAX_SPEED_BOOST = 0.3
 
+# --- 速度設定 ---
+# デフォルトの逃げ側パラメータ
+NIGE_MAX_SPEED = 0.2
+NIGE_ACCEL_STEPS = 4
+NIGE_ACCEL = NIGE_MAX_SPEED / NIGE_ACCEL_STEPS
+
+# 鬼側は逃げよりも高速・高加速度
+ONI_MAX_SPEED = NIGE_MAX_SPEED * 1.2
+ONI_ACCEL = NIGE_ACCEL * 2
+ONI_ACCEL_STEPS = ONI_MAX_SPEED / ONI_ACCEL
+
 
 class StageMap:
     def __init__(
@@ -543,8 +554,20 @@ def main():
         start = time.time()
         end_time = start + args.duration
 
-        oni = Agent(1.5, 1.5, (255, 0, 0))
-        nige = Agent(width - 2, height - 2, (0, 100, 255))
+        nige = Agent(
+            width - 2,
+            height - 2,
+            (0, 100, 255),
+            max_speed=NIGE_MAX_SPEED,
+            accel_steps=NIGE_ACCEL_STEPS,
+        )
+        oni = Agent(
+            1.5,
+            1.5,
+            (255, 0, 0),
+            max_speed=ONI_MAX_SPEED,
+            accel_steps=ONI_ACCEL_STEPS,
+        )
 
         running = True
         result = "timeout"

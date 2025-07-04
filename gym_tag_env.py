@@ -10,7 +10,16 @@ import pygame
 import torch
 
 from stage_generator import generate_stage
-from tag_game import StageMap, Agent, CELL_SIZE, MAX_SPEED_BOOST
+from tag_game import (
+    StageMap,
+    Agent,
+    CELL_SIZE,
+    MAX_SPEED_BOOST,
+    NIGE_MAX_SPEED,
+    NIGE_ACCEL_STEPS,
+    ONI_MAX_SPEED,
+    ONI_ACCEL_STEPS,
+)
 
 INFO_PANEL_HEIGHT = 40
 
@@ -290,8 +299,20 @@ class MultiTagEnv(gym.Env):
                 nige_pos = self.stage.random_open_position()
                 _, d = self.stage.shortest_path_info(oni_pos, nige_pos)
                 tries += 1
-        self.oni = Agent(oni_pos.x, oni_pos.y, (255, 0, 0))
-        self.nige = Agent(nige_pos.x, nige_pos.y, (0, 100, 255))
+        self.nige = Agent(
+            nige_pos.x,
+            nige_pos.y,
+            (0, 100, 255),
+            max_speed=NIGE_MAX_SPEED,
+            accel_steps=NIGE_ACCEL_STEPS,
+        )
+        self.oni = Agent(
+            oni_pos.x,
+            oni_pos.y,
+            (255, 0, 0),
+            max_speed=ONI_MAX_SPEED,
+            accel_steps=ONI_ACCEL_STEPS,
+        )
         self.oni_history = [(self.oni.pos.x, self.oni.pos.y)]
         self.nige_history = [(self.nige.pos.x, self.nige.pos.y)]
         self.step_count = 0
