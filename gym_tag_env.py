@@ -113,6 +113,7 @@ class MultiTagEnv(gym.Env):
         self.height_range = height_range
         self.oni_history: list[tuple[float, float]] = []
         self.nige_history: list[tuple[float, float]] = []
+        self.prev_pred_distance: float = 0.0
 
     def _is_visible(self, agent: Agent, opponent: Agent) -> bool:
         """Return True if ``opponent`` is within ``agent``'s FOV."""
@@ -372,6 +373,11 @@ class MultiTagEnv(gym.Env):
         _, self.prev_distance = self.stage.shortest_path_info(
             self.oni.pos, self.nige.pos
         )
+        pred_pos = pygame.Vector2(
+            min(max(self.nige.pos.x + self.nige.vel.x * 2, 0), self.stage.width - 1),
+            min(max(self.nige.pos.y + self.nige.vel.y * 2, 0), self.stage.height - 1),
+        )
+        _, self.prev_pred_distance = self.stage.shortest_path_info(self.oni.pos, pred_pos)
         obs = self._get_obs(False, False)
         obs_vec = (obs[0][0], obs[1][0])
         return obs_vec, {
@@ -399,7 +405,9 @@ class MultiTagEnv(gym.Env):
         self.oni.set_direction(odx, ody)
         self.nige.set_direction(ndx, ndy)
 
-        _, prev_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
+        prev_oni_pos = self.oni.pos.copy()
+        prev_nige_pos = self.nige.pos.copy()
+        _, prev_dist = self.stage.shortest_path_info(prev_oni_pos, prev_nige_pos)
 
         updates = max(1, int(round(self.speed_multiplier)))
         oni_collisions = 0
@@ -414,6 +422,25 @@ class MultiTagEnv(gym.Env):
         _, new_dist = self.stage.shortest_path_info(self.oni.pos, self.nige.pos)
         self.prev_distance = new_dist
         dist_delta = prev_dist - new_dist
+
+        pred_pos = pygame.Vector2(
+            min(max(self.nige.pos.x + self.nige.vel.x * 2, 0), self.stage.width - 1),
+            min(max(self.nige.pos.y + self.nige.vel.y * 2, 0), self.stage.height - 1),
+        )
+        _, pred_dist = self.stage.shortest_path_info(self.oni.pos, pred_pos)
+        pred_dist_delta = self.prev_pred_distance - pred_dist
+        self.prev_pred_distance = pred_dist
+
+        oni_move = self.oni.pos - prev_oni_pos
+        nige_move = self.nige.pos - prev_nige_pos
+        dir_on_to_ni, _ = self.stage.shortest_path_info(prev_oni_pos, prev_nige_pos)
+        dir_ni_to_on, _ = self.stage.shortest_path_info(prev_nige_pos, prev_oni_pos)
+        oni_align = 0.0
+        nige_align = 0.0
+        if oni_move.length_squared() > 0 and dir_on_to_ni.length_squared() > 0:
+            oni_align = oni_move.normalize().dot(dir_on_to_ni)
+        if nige_move.length_squared() > 0 and dir_ni_to_on.length_squared() > 0:
+            nige_align = nige_move.normalize().dot(dir_ni_to_on)
 
         self.oni_history.append((self.oni.pos.x, self.oni.pos.y))
         self.nige_history.append((self.nige.pos.x, self.nige.pos.y))
@@ -441,12 +468,14 @@ class MultiTagEnv(gym.Env):
 
         else:
             oni_reward = -0.005 * updates + 0.01 * dist_delta
+            oni_reward += 0.01 * pred_dist_delta + 0.02 * oni_align
             if truncated:
                 nige_reward = 2.0
                 oni_reward -= 1.0
             else:
                 nige_reward = 0.0
-            nige_reward += 0.01 * (-dist_delta) + 0.002 * updates
+            nige_reward += 0.01 * (-dist_delta)
+            nige_reward += -0.02 * nige_align + 0.002 * updates
 
         # penalty for wall collisions grows exponentially with the number of
         # hits in this step
