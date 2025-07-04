@@ -101,7 +101,7 @@ class CNNActor(torch.nn.Module):
 
 
 CELL_SIZE = 20
-EXTRA_WALL_PROB = 0.1
+EXTRA_WALL_PROB = 0.15
 INFO_PANEL_HEIGHT = 40
 DEFAULT_DURATION = 10.0
 
@@ -689,7 +689,7 @@ def main():
     spectator_mode = args.oni is not None and args.nige is not None
 
     pygame.init()
-    width, height = 73, 51
+    width, height = 31, 21
     width_range = None
     height_range = None
     if args.width_range:

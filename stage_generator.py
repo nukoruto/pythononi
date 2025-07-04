@@ -137,14 +137,14 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate and print a random stage")
-    parser.add_argument("--w", "--width", dest="width", type=int, default=73, help="Stage width (odd number)")
-    parser.add_argument("--h", "--height", dest="height", type=int, default=51, help="Stage height (odd number)")
+    parser.add_argument("--w", "--width", dest="width", type=int, default=31, help="Stage width (odd number)")
+    parser.add_argument("--h", "--height", dest="height", type=int, default=21, help="Stage height (odd number)")
     parser.add_argument(
         "--extra-wall",
         "--extra-wall-prob",
         dest="extra_wall_prob",
         type=float,
-        default=0.1,
+        default=0.15,
         help="Probability of adding extra walls after maze generation",
     )
     args = parser.parse_args()
