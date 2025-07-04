@@ -18,8 +18,10 @@ INFO_PANEL_HEIGHT = 40
 class MultiTagEnv(gym.Env):
     """Two-agent tag environment.
 
-    ``step`` expects actions for both agents and returns observations and
-    rewards as tuples ``(oni, nige)``. 逃げ側も強化学習の対象となります。
+    ``step`` expects actions for both agents and returns vector observations and
+    rewards as tuples ``(oni, nige)``. CNN observation tensors are provided via
+    the info dictionary returned by :meth:`reset` and :meth:`step`. 逃げ側も強化
+    学習の対象となります。
     """
 
     metadata = {"render_modes": ["human"]}
@@ -253,6 +255,12 @@ class MultiTagEnv(gym.Env):
         seed: int | None = None,
         options: dict | None = None,
     ) -> tuple[tuple[np.ndarray, np.ndarray], dict]:
+        """Reset environment and return vector observations for both agents.
+
+        The returned info dictionary contains CNN observation tensors under
+        ``"oni_tensor"`` and ``"nige_tensor"``.
+        """
+
         super().reset(seed=seed)
         if seed is not None:
             np.random.seed(seed)
@@ -294,7 +302,8 @@ class MultiTagEnv(gym.Env):
             self.oni.pos, self.nige.pos
         )
         obs = self._get_obs(False, False)
-        return obs, {
+        obs_vec = (obs[0][0], obs[1][0])
+        return obs_vec, {
             "oni_tensor": obs[0][1],
             "nige_tensor": obs[1][1],
         }
