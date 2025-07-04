@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument("--tau", type=float, default=0.005, help="Target update coefficient")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
     parser.add_argument("--use-cnn", action="store_true", help="Use CNN-based models")
-    parser.add_argument("--eval-interval", type=int, default=100, help="Evaluation interval in episodes")
+    parser.add_argument("--eval-interval", type=int, default=50, help="Evaluation interval in episodes")
     parser.add_argument("--eval-episodes", type=int, default=10, help="Number of evaluation episodes")
     return parser.parse_args()
 
