@@ -499,8 +499,9 @@ def main():
     )
     args = parser.parse_args()
 
-    if (args.oni is None) == (args.nige is None):
-        raise SystemExit("--oni または --nige のどちらか一方を指定してください")
+    if args.oni is None and args.nige is None:
+        raise SystemExit("--oni または --nige を少なくとも一方指定してください")
+    spectator_mode = args.oni is not None and args.nige is not None
 
     pygame.init()
     width, height = 73, 51
@@ -523,6 +524,8 @@ def main():
     if args.g and device.type != "cuda":
         print("GPU is not available. Falling back to CPU.")
     print(f"Using device: {device}")
+    if spectator_mode:
+        print("観戦モードで実行します")
     oni_actor = None
     nige_actor = None
     if args.oni is not None:
@@ -584,15 +587,19 @@ def main():
             pdy = keys[pygame.K_s] - keys[pygame.K_w]
 
             oni_obs, nige_obs = get_state(oni, nige, stage)
+
             if oni_actor is not None:
                 action = oni_actor.act(np.array(oni_obs, dtype=np.float32))
                 oni.set_direction(float(action[0]), float(action[1]))
-                nige.set_direction(pdx, pdy)
             else:
                 oni.set_direction(pdx, pdy)
-                if nige_actor is not None:
-                    action = nige_actor.act(np.array(nige_obs, dtype=np.float32))
-                    nige.set_direction(float(action[0]), float(action[1]))
+
+            if nige_actor is not None:
+                action = nige_actor.act(np.array(nige_obs, dtype=np.float32))
+                nige.set_direction(float(action[0]), float(action[1]))
+            else:
+                # if spectator_mode is True, no player input is used
+                nige.set_direction(pdx if not spectator_mode else 0.0, pdy if not spectator_mode else 0.0)
 
             oni.update(stage)
             nige.update(stage)
