@@ -85,8 +85,8 @@ py train_sac.py --episodes 1000 --render
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--oni-model <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
-| `--nige-model <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
+| `--oni <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
+| `--nige <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
 | `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
 | `--render` | 学習中に画面を描画 | - |
 | `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
@@ -105,8 +105,8 @@ py train_sac.py --episodes 1000 --render
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--oni-model <path>` | 評価用鬼モデルのパス | `oni_sac.pth` |
-| `--nige-model <path>` | 評価用逃げモデルのパス | `nige_sac.pth` |
+| `--oni <path>` | 評価用鬼モデルのパス | `oni_sac.pth` |
+| `--nige <path>` | 評価用逃げモデルのパス | `nige_sac.pth` |
 | `--episodes <int>` | 評価エピソード数 | 10 |
 | `--render` | 描画を有効化 | - |
 | `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |

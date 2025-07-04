@@ -14,8 +14,8 @@ from gym_tag_env import MultiTagEnv
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate SAC trained agents")
-    parser.add_argument("--oni-model", type=str, default="oni_sac.pth", help="Oni model path")
-    parser.add_argument("--nige-model", type=str, default="nige_sac.pth", help="Nige model path")
+    parser.add_argument("--oni", type=str, default="oni_sac.pth", help="Oni model path")
+    parser.add_argument("--nige", type=str, default="nige_sac.pth", help="Nige model path")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--render", action="store_true", help="Render environment")
     parser.add_argument("--speed-multiplier", type=float, default=1.0, help="Environment speed multiplier")
@@ -62,10 +62,10 @@ def run_episode(
 
 def main():
     args = parse_args()
-    if not os.path.exists(args.oni_model):
-        raise FileNotFoundError(f"Model not found: {args.oni_model}")
-    if not os.path.exists(args.nige_model):
-        raise FileNotFoundError(f"Model not found: {args.nige_model}")
+    if not os.path.exists(args.oni):
+        raise FileNotFoundError(f"Model not found: {args.oni}")
+    if not os.path.exists(args.nige):
+        raise FileNotFoundError(f"Model not found: {args.nige}")
     device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
     if args.g and device.type != "cuda":
         print("GPU is not available. Falling back to CPU.")
@@ -79,12 +79,12 @@ def main():
     action_dim = env.action_space.shape[0]
 
     oni_actor = Actor(obs_dim, action_dim).to(device)
-    oni_state = torch.load(args.oni_model, map_location=device)
+    oni_state = torch.load(args.oni, map_location=device)
     oni_actor.load_state_dict(oni_state["actor"])
     oni_actor.eval()
 
     nige_actor = Actor(obs_dim, action_dim).to(device)
-    nige_state = torch.load(args.nige_model, map_location=device)
+    nige_state = torch.load(args.nige, map_location=device)
     nige_actor.load_state_dict(nige_state["actor"])
     nige_actor.eval()
 
