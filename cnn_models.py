@@ -3,9 +3,9 @@ import torch.nn as nn
 
 
 class CNNEncoder(nn.Module):
-    """Deeper CNN encoder for (batch, 15, H, W) tensors."""
+    """Deeper CNN encoder for (batch, 17, H, W) tensors."""
 
-    def __init__(self, in_channels: int = 15, feature_dim: int = 64) -> None:
+    def __init__(self, in_channels: int = 17, feature_dim: int = 64) -> None:
         super().__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, 32, kernel_size=3, padding=1),
