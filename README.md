@@ -97,6 +97,10 @@ py train_sac.py --eps 1000 --draw
 | `--gamma <float>` | 割引率 | 0.99 |
 | `--lr <float>` | 学習率 | 3e-4 |
 | `--gpu` | GPU を利用する(利用可能な場合) | - |
+| `--cnn` | CNNベースのモデルを利用 | - |
+
+`--cnn` または `--use-cnn` を指定すると、`info["oni_tensor"]` などの観測テンソルを
+入力とする CNN ベースの Actor/Critic で学習を行います。
 
 `train_sac.py` で学習したモデルは、それぞれ `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
 `out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
@@ -113,6 +117,10 @@ py train_sac.py --eps 1000 --draw
 | `--draw-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--gpu` | GPU を利用する(利用可能な場合) | - |
 | `--out <path>` | 評価結果を保存する基点ディレクトリ | `eval` |
+| `--cnn` | CNNベースのモデルを利用 | - |
+
+モデルの学習時に `--cnn` を指定していた場合、評価側でも同じオプションを付けて
+CNNベースの Actor を読み込みます。
 
 指定エピソードの評価が終了すると、`<out>/YYYYMMDD_HHMMSS` 以下に
 `rewards.csv` と `evaluation_curve.png` が生成されます。標準出力には
