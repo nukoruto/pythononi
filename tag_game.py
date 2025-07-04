@@ -9,6 +9,7 @@ import pygame
 from stage_generator import generate_stage, Stage
 import numpy as np
 import torch
+from cnn_models import CNNEncoder
 
 
 class Actor(torch.nn.Module):
@@ -45,6 +46,57 @@ class Actor(torch.nn.Module):
         obs_t = torch.tensor(obs, dtype=torch.float32, device=device)
         with torch.no_grad():
             action, _ = self.sample(obs_t.unsqueeze(0))
+        return action.squeeze(0).cpu().numpy()
+
+
+class CNNActor(torch.nn.Module):
+    """Actor that combines CNN features with vector observations."""
+
+    def __init__(
+        self,
+        obs_dim: int,
+        action_dim: int,
+        hidden_dim: int = 256,
+        cnn_feature_dim: int = 64,
+        in_channels: int = 15,
+    ) -> None:
+        super().__init__()
+        self.encoder = CNNEncoder(in_channels, cnn_feature_dim)
+        self.net = torch.nn.Sequential(
+            torch.nn.Linear(obs_dim + cnn_feature_dim, hidden_dim),
+            torch.nn.ReLU(),
+            torch.nn.Linear(hidden_dim, hidden_dim),
+            torch.nn.ReLU(),
+        )
+        self.mean = torch.nn.Linear(hidden_dim, action_dim)
+        self.log_std = torch.nn.Linear(hidden_dim, action_dim)
+
+    def forward(
+        self, obs_vec: torch.Tensor, obs_tensor: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        feat = self.encoder(obs_tensor)
+        h = self.net(torch.cat([obs_vec, feat], dim=-1))
+        return self.mean(h), self.log_std(h)
+
+    def sample(
+        self, obs_vec: torch.Tensor, obs_tensor: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        mean, log_std = self(obs_vec, obs_tensor)
+        log_std = torch.clamp(log_std, -20, 2)
+        std = log_std.exp()
+        normal = torch.distributions.Normal(mean, std)
+        x_t = normal.rsample()
+        y_t = torch.tanh(x_t)
+        log_prob = normal.log_prob(x_t) - torch.log(1 - y_t.pow(2) + 1e-6)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        return y_t, log_prob
+
+    def act(self, obs_vec: np.ndarray, obs_tensor: np.ndarray) -> np.ndarray:
+        device = next(self.parameters()).device
+        obs_vec_t = torch.tensor(obs_vec, dtype=torch.float32, device=device)
+        obs_tensor_t = torch.tensor(obs_tensor, dtype=torch.float32, device=device)
+        with torch.no_grad():
+            action, _ = self.sample(obs_vec_t.unsqueeze(0), obs_tensor_t.unsqueeze(0))
         return action.squeeze(0).cpu().numpy()
 
 
@@ -446,6 +498,133 @@ def get_state(
     return oni.observe(nige, stage), nige.observe(oni, stage)
 
 
+def make_obs(
+    agent: Agent,
+    opponent: Agent,
+    stage: StageMap,
+    collided: bool,
+    step_count: int,
+    max_steps: int,
+) -> np.ndarray:
+    """Return normalized observation vector for ``agent``."""
+    px = agent.pos.x / stage.width * 2.0 - 1.0
+    py = agent.pos.y / stage.height * 2.0 - 1.0
+
+    v_scale = agent.max_speed + MAX_SPEED_BOOST
+    vx = np.clip(agent.vel.x / v_scale, -1.0, 1.0)
+    vy = np.clip(agent.vel.y / v_scale, -1.0, 1.0)
+
+    collision = 1.0 if collided else 0.0
+
+    direction, dist = stage.shortest_path_info(agent.pos, opponent.pos)
+    max_dist = stage.width + stage.height
+    dist_norm = min(dist / max_dist, 1.0)
+
+    ov_scale = opponent.max_speed + MAX_SPEED_BOOST
+    ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
+    ovy = np.clip(opponent.vel.y / ov_scale, -1.0, 1.0)
+
+    remain_ratio = max(0.0, 1.0 - step_count / float(max_steps))
+
+    return np.array(
+        [
+            px,
+            py,
+            vx,
+            vy,
+            collision,
+            direction.x,
+            direction.y,
+            dist_norm,
+            ovx,
+            ovy,
+            remain_ratio,
+        ],
+        dtype=np.float32,
+    )
+
+
+def build_obs_tensor(
+    agent: Agent,
+    opponent: Agent,
+    stage: StageMap,
+    collided: bool,
+    history: list[tuple[float, float]],
+    remain_ratio: float,
+) -> torch.Tensor:
+    """Return multi-channel observation tensor for CNN input."""
+    h, w = stage.height, stage.width
+    tensor = np.zeros((15, h, w), dtype=np.float32)
+
+    tensor[0] = np.array(stage.grid, dtype=np.float32)
+
+    ax, ay = int(agent.pos.x), int(agent.pos.y)
+    ox, oy = int(opponent.pos.x), int(opponent.pos.y)
+
+    if 0 <= ax < w and 0 <= ay < h:
+        tensor[1, ay, ax] = 1.0
+
+    v_scale = agent.max_speed + MAX_SPEED_BOOST
+    vx = np.clip(agent.vel.x / v_scale, -1.0, 1.0)
+    vy = np.clip(agent.vel.y / v_scale, -1.0, 1.0)
+    tensor[2].fill(vx)
+    tensor[3].fill(vy)
+
+    if 0 <= ox < w and 0 <= oy < h:
+        tensor[4, oy, ox] = 1.0
+
+    ov_scale = opponent.max_speed + MAX_SPEED_BOOST
+    ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
+    ovy = np.clip(opponent.vel.y / ov_scale, -1.0, 1.0)
+    tensor[5].fill(ovx)
+    tensor[6].fill(ovy)
+
+    if collided and 0 <= ax < w and 0 <= ay < h:
+        tensor[7, ay, ax] = 1.0
+
+    if collided:
+        tensor[8].fill(-agent.dir.x)
+        tensor[9].fill(-agent.dir.y)
+
+    tensor[10].fill(remain_ratio)
+
+    max_range = stage.width + stage.height
+    tensor[11].fill((opponent.pos.x - agent.pos.x) / max_range)
+    tensor[12].fill((opponent.pos.y - agent.pos.y) / max_range)
+
+    pred_x = int(opponent.pos.x + opponent.vel.x * 2)
+    pred_y = int(opponent.pos.y + opponent.vel.y * 2)
+    if 0 <= pred_x < w and 0 <= pred_y < h:
+        tensor[13, pred_y, pred_x] = 1.0
+
+    for idx, (hx, hy) in enumerate(reversed(history[-5:])):
+        weight = (5 - idx) / 5.0
+        hx_i, hy_i = int(hx), int(hy)
+        if 0 <= hx_i < w and 0 <= hy_i < h:
+            tensor[14, hy_i, hx_i] = weight
+
+    return torch.tensor(tensor, dtype=torch.float32)
+
+
+def get_state_cnn(
+    oni: Agent,
+    nige: Agent,
+    stage: StageMap,
+    oni_history: list[tuple[float, float]],
+    nige_history: list[tuple[float, float]],
+    oni_collided: bool,
+    nige_collided: bool,
+    step_count: int,
+    max_steps: int,
+) -> Tuple[Tuple[np.ndarray, torch.Tensor], Tuple[np.ndarray, torch.Tensor]]:
+    remain_ratio = max(0.0, 1.0 - step_count / float(max_steps))
+    oni_vec = make_obs(oni, nige, stage, oni_collided, step_count, max_steps)
+    nige_vec = make_obs(nige, oni, stage, nige_collided, step_count, max_steps)
+    oni_tensor = build_obs_tensor(oni, nige, stage, oni_collided, oni_history, remain_ratio)
+    nige_tensor = build_obs_tensor(nige, oni, stage, nige_collided, nige_history, remain_ratio)
+    return (oni_vec, oni_tensor), (nige_vec, nige_tensor)
+
+
 def main():
     parser = argparse.ArgumentParser(description="2D鬼ごっこデモ")
     parser.add_argument(
@@ -497,6 +676,12 @@ def main():
         action="store_true",
         help="GPU を利用する(利用可能な場合)",
     )
+    parser.add_argument(
+        "--cnn",
+        dest="use_cnn",
+        action="store_true",
+        help="CNNベースのモデルを利用",
+    )
     args = parser.parse_args()
 
     if args.oni is None and args.nige is None:
@@ -528,13 +713,15 @@ def main():
         print("観戦モードで実行します")
     oni_actor = None
     nige_actor = None
+    actor_cls = CNNActor if args.use_cnn else Actor
+    obs_dim = 11 if args.use_cnn else 3
     if args.oni is not None:
-        oni_actor = Actor(3, 2).to(device)
+        oni_actor = actor_cls(obs_dim, 2).to(device)
         state = torch.load(args.oni, map_location=device)
         oni_actor.load_state_dict(state["actor"] if "actor" in state else state)
         oni_actor.eval()
     if args.nige is not None:
-        nige_actor = Actor(3, 2).to(device)
+        nige_actor = actor_cls(obs_dim, 2).to(device)
         state = torch.load(args.nige, map_location=device)
         nige_actor.load_state_dict(state["actor"] if "actor" in state else state)
         nige_actor.eval()
@@ -574,6 +761,11 @@ def main():
 
         running = True
         result = "timeout"
+        step_count = 0
+        oni_collided = False
+        nige_collided = False
+        oni_history = [(oni.pos.x, oni.pos.y)]
+        nige_history = [(nige.pos.x, nige.pos.y)]
         while running:
             remaining = max(0.0, end_time - time.time())
             if remaining <= 0:
@@ -586,23 +778,47 @@ def main():
             pdx = keys[pygame.K_d] - keys[pygame.K_a]
             pdy = keys[pygame.K_s] - keys[pygame.K_w]
 
-            oni_obs, nige_obs = get_state(oni, nige, stage)
+            if args.use_cnn:
+                (oni_vec, oni_tensor), (nige_vec, nige_tensor) = get_state_cnn(
+                    oni,
+                    nige,
+                    stage,
+                    oni_history,
+                    nige_history,
+                    oni_collided,
+                    nige_collided,
+                    step_count,
+                    int(args.duration * 60),
+                )
+            else:
+                oni_vec, nige_vec = get_state(oni, nige, stage)
 
             if oni_actor is not None:
-                action = oni_actor.act(np.array(oni_obs, dtype=np.float32))
-                oni.set_direction(float(action[0]), float(action[1]))
+                if args.use_cnn:
+                    act = oni_actor.act(oni_vec, oni_tensor)
+                else:
+                    act = oni_actor.act(np.array(oni_vec, dtype=np.float32))
+                oni.set_direction(float(act[0]), float(act[1]))
             else:
                 oni.set_direction(pdx, pdy)
 
             if nige_actor is not None:
-                action = nige_actor.act(np.array(nige_obs, dtype=np.float32))
-                nige.set_direction(float(action[0]), float(action[1]))
+                if args.use_cnn:
+                    act = nige_actor.act(nige_vec, nige_tensor)
+                else:
+                    act = nige_actor.act(np.array(nige_vec, dtype=np.float32))
+                nige.set_direction(float(act[0]), float(act[1]))
             else:
                 # if spectator_mode is True, no player input is used
                 nige.set_direction(pdx if not spectator_mode else 0.0, pdy if not spectator_mode else 0.0)
 
-            oni.update(stage)
-            nige.update(stage)
+            oni_collided = oni.update(stage)
+            nige_collided = nige.update(stage)
+            step_count += 1
+            oni_history.append((oni.pos.x, oni.pos.y))
+            nige_history.append((nige.pos.x, nige.pos.y))
+            oni_history = oni_history[-5:]
+            nige_history = nige_history[-5:]
 
             screen.fill((0, 0, 0))
             pygame.draw.rect(
