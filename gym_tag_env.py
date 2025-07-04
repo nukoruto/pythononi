@@ -188,9 +188,12 @@ class MultiTagEnv(gym.Env):
                 nige_reward = 0.0
             nige_reward += 0.01 * (-dist_delta) + 0.002 * updates
 
-        # small penalty for wall collisions
-        oni_reward -= 0.001 * oni_collisions
-        nige_reward -= 0.001 * nige_collisions
+        # penalty for wall collisions grows exponentially with the number of
+        # hits in this step
+        oni_penalty = 0.001 * (1.5 ** oni_collisions - 1.0)
+        nige_penalty = 0.001 * (1.5 ** nige_collisions - 1.0)
+        oni_reward -= oni_penalty
+        nige_reward -= nige_penalty
 
         # reward is computed for ``updates`` physical steps so that the
         # total reward does not shrink when ``speed_multiplier`` is large
