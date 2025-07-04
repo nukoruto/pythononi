@@ -7,13 +7,13 @@
 ## ステージ生成
 
 ```bash
-python3 stage_generator.py --width 73 --height 51
+python3 stage_generator.py --w 73 --h 51
 ```
 
 実行すると固定サイズ（例: 73x51）のステージが標準出力に表示されます。
 `generate_stage` 関数に幅・高さを指定することで別サイズのステージも生成可能です。
 ステージには行き止まりが存在せず、孤立したエリアも生じないよう接続性を保ったまま生成されます。道幅はランダムで広げられます。
-壁密度を高めたい場合は `--extra-wall-prob` オプションで値を指定します。デフォルトは
+壁密度を高めたい場合は `--extra-wall` オプションで値を指定します。デフォルトは
 `0.1` です。
 
 ## 鬼ごっこ環境
@@ -25,7 +25,7 @@ py tag_game.py
 ```
 実行すると、鬼から逃げまでの経路が `shortest_path_vectors` を用いて計算され、
 壁を回避した最短経路が緑色の線で表示されます。ステージサイズはデフォルトで
-73x51 ですが、`--width-range` と `--height-range` を指定するとその範囲から
+73x51 ですが、`--w-range` と `--h-range` を指定するとその範囲から
 ランダムに奇数が選ばれます。
 
 また、強化学習向けには `gym_tag_env.py` に `MultiTagEnv` クラスを実装しています。`reset()` でステージとエージェントを再初期化し、`step()` では鬼と逃げのアクションをタプルで与え、観測と報酬も `(鬼, 逃げ)` のタプルで返されます。初期位置は毎回ランダムに選ばれ、必要に応じて `start_distance_range` で互いの距離を制約できます。逃げ側の報酬は捕まったら `-1`、時間いっぱい逃げ切ったら `+1` です。現在の実装では、直線距離ではなく最短経路長の変化を用いて追加報酬を与えます。CNN 入力用の多チャンネル観測テンソルは `reset()` と `step()` が返す `info` 辞書（`"oni_tensor"`, `"nige_tensor"`）に含まれます。
@@ -49,14 +49,14 @@ pip install -r requirements.txt
 ```
 
 `train_sac.py` は Soft Actor-Critic (SAC) を用いて鬼と逃げを同時に学習するスクリプトです。
-学習中にマップと各エージェントの状態を表示したい場合は `--render` オプションを指定してください。
+学習中にマップと各エージェントの状態を表示したい場合は `--draw` オプションを指定してください。
 
 ```bash
-py train_sac.py --episodes 1000 --render
+py train_sac.py --eps 1000 --draw
 ```
 
-描画更新間隔は `--render-interval` で指定できます (デフォルト1ステップごと)。
-学習時間を秒単位で制限したい場合は `--duration` を用います。速度倍率や描画速度は `--speed-multiplier` と `--render-speed` で調整可能です。
+描画更新間隔は `--draw-int` で指定できます (デフォルト1ステップごと)。
+学習時間を秒単位で制限したい場合は `--time` を用います。速度倍率や描画速度は `--speed` と `--draw-speed` で調整可能です。
 保存したモデルは `evaluate_sac.py` から評価できます。
 
 学習後、鬼側モデルと逃げ側モデルは `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
@@ -73,13 +73,13 @@ py train_sac.py --episodes 1000 --render
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--duration <秒>` | 1ゲームの制限時間 | 10.0 |
-| `--width-range a,b` | 幅を[a,b]からランダムに奇数選択 | - |
-| `--height-range a,b` | 高さを[a,b]からランダムに奇数選択 | - |
+| `--time <秒>` | 1ゲームの制限時間 | 10.0 |
+| `--w-range a,b` | 幅を[a,b]からランダムに奇数選択 | - |
+| `--h-range a,b` | 高さを[a,b]からランダムに奇数選択 | - |
 | `--games <int>` | 連続対戦数 | 1 |
 | `--oni <path>` | 鬼側モデルのパス（指定すると逃げはプレイヤー操作） | - |
 | `--nige <path>` | 逃げ側モデルのパス（指定すると鬼はプレイヤー操作） | - |
-| `--g` | GPU を利用する(利用可能な場合) | - |
+| `--gpu` | GPU を利用する(利用可能な場合) | - |
 
 ### `train_sac.py`
 
@@ -87,16 +87,16 @@ py train_sac.py --episodes 1000 --render
 |------------|------|-----------|
 | `--oni <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
 | `--nige <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
-| `--checkpoint-freq <int>` | 指定間隔でチェックポイント保存 | 0 |
-| `--render` | 学習中に画面を描画 | - |
-| `--render-interval <int>` | 描画間隔(ステップ数) | 1 |
-| `--duration <秒>` | 各エピソードの学習時間（環境時間） | 10 |
-| `--episodes <int>` | 総エピソード数 | 10 |
-| `--speed-multiplier <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
-| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
+| `--ckpt <int>` | 指定間隔でチェックポイント保存 | 0 |
+| `--draw` | 学習中に画面を描画 | - |
+| `--draw-int <int>` | 描画間隔(ステップ数) | 1 |
+| `--time <秒>` | 各エピソードの学習時間（環境時間） | 10 |
+| `--eps <int>` | 総エピソード数 | 10 |
+| `--speed <float>` | 環境の処理速度倍率（タイマーも連動） | 1.0 |
+| `--draw-speed <float>` | 描画FPSの倍率 | 1.0 |
 | `--gamma <float>` | 割引率 | 0.99 |
 | `--lr <float>` | 学習率 | 3e-4 |
-| `--g` | GPU を利用する(利用可能な場合) | - |
+| `--gpu` | GPU を利用する(利用可能な場合) | - |
 
 `train_sac.py` で学習したモデルは、それぞれ `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
 `out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
@@ -107,14 +107,14 @@ py train_sac.py --episodes 1000 --render
 |------------|------|-----------|
 | `--oni <path>` | 評価用鬼モデルのパス | `oni_sac.pth` |
 | `--nige <path>` | 評価用逃げモデルのパス | `nige_sac.pth` |
-| `--episodes <int>` | 評価エピソード数 | 10 |
-| `--render` | 描画を有効化 | - |
-| `--speed-multiplier <float>` | 環境の処理速度倍率 | 1.0 |
-| `--render-speed <float>` | 描画FPSの倍率 | 1.0 |
-| `--g` | GPU を利用する(利用可能な場合) | - |
-| `--output-dir <path>` | 評価結果を保存する基点ディレクトリ | `eval` |
+| `--eps <int>` | 評価エピソード数 | 10 |
+| `--draw` | 描画を有効化 | - |
+| `--speed <float>` | 環境の処理速度倍率 | 1.0 |
+| `--draw-speed <float>` | 描画FPSの倍率 | 1.0 |
+| `--gpu` | GPU を利用する(利用可能な場合) | - |
+| `--out <path>` | 評価結果を保存する基点ディレクトリ | `eval` |
 
-指定エピソードの評価が終了すると、`<output-dir>/YYYYMMDD_HHMMSS` 以下に
+指定エピソードの評価が終了すると、`<out>/YYYYMMDD_HHMMSS` 以下に
 `rewards.csv` と `evaluation_curve.png` が生成されます。標準出力には
 平均報酬とその標準偏差が表示されるため、学習時と同様に性能を定量的に
 確認できます。

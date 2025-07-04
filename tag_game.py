@@ -438,7 +438,9 @@ def get_state(
 def main():
     parser = argparse.ArgumentParser(description="2D鬼ごっこデモ")
     parser.add_argument(
+        "--time",
         "--duration",
+        dest="duration",
         type=float,
         default=DEFAULT_DURATION,
         help="ゲームの制限時間（秒）",
@@ -450,13 +452,17 @@ def main():
         help="連続対戦数",
     )
     parser.add_argument(
+        "--w-range",
         "--width-range",
+        dest="width_range",
         type=str,
         default=None,
         help="ステージ幅の最小値と最大値をカンマ区切りで指定",
     )
     parser.add_argument(
+        "--h-range",
         "--height-range",
+        dest="height_range",
         type=str,
         default=None,
         help="ステージ高さの最小値と最大値をカンマ区切りで指定",
@@ -474,7 +480,9 @@ def main():
         help="逃げ側モデルのパス（指定すると鬼はプレイヤー操作）",
     )
     parser.add_argument(
+        "--gpu",
         "--g",
+        dest="g",
         action="store_true",
         help="GPU を利用する(利用可能な場合)",
     )
