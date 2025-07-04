@@ -38,6 +38,8 @@ def parse_args():
     parser.add_argument("--tau", type=float, default=0.005, help="Target update coefficient")
     parser.add_argument("--g", action="store_true", help="Use GPU if available")
     parser.add_argument("--use-cnn", action="store_true", help="Use CNN-based models")
+    parser.add_argument("--eval-interval", type=int, default=100, help="Evaluation interval in episodes")
+    parser.add_argument("--eval-episodes", type=int, default=10, help="Number of evaluation episodes")
     return parser.parse_args()
 
 
@@ -379,6 +381,49 @@ class SACAgent:
 
 
 
+def evaluate_agents(
+    oni_agent: SACAgent,
+    nige_agent: SACAgent,
+    args: argparse.Namespace,
+) -> tuple[int, int]:
+    """Evaluate both agents and return win counts for oni and nige."""
+    eval_env = _create_env(args)
+    oni_agent.actor.eval()
+    nige_agent.actor.eval()
+    oni_wins = 0
+    nige_wins = 0
+    for ep in range(args.eval_episodes):
+        eval_env.set_run_info(ep + 1, args.eval_episodes)
+        eval_env.set_training_end_time(None)
+        obs, info = eval_env.reset()
+        oni_obs, nige_obs = obs
+        oni_tensor = info["oni_tensor"]
+        nige_tensor = info["nige_tensor"]
+        done = False
+        terminated = False
+        while not done:
+            if args.use_cnn:
+                oni_action = oni_agent.act(oni_obs, oni_tensor)
+                nige_action = nige_agent.act(nige_obs, nige_tensor)
+            else:
+                oni_action = oni_agent.act(oni_obs)
+                nige_action = nige_agent.act(nige_obs)
+            (oni_obs, nige_obs), _, terminated, truncated, info = eval_env.step(
+                (oni_action, nige_action)
+            )
+            oni_tensor = info["oni_tensor"]
+            nige_tensor = info["nige_tensor"]
+            done = terminated or truncated
+        if terminated:
+            oni_wins += 1
+        else:
+            nige_wins += 1
+    eval_env.close()
+    oni_agent.actor.train()
+    nige_agent.actor.train()
+    return oni_wins, nige_wins
+
+
 def run_training(args: argparse.Namespace) -> None:
     device = torch.device("cuda" if args.g and torch.cuda.is_available() else "cpu")
     if args.g and device.type != "cuda":
@@ -404,6 +449,8 @@ def run_training(args: argparse.Namespace) -> None:
     nige_model_path = os.path.join(output_dir, args.nige)
 
     total_steps = 0
+    freeze_oni = False
+    freeze_nige = False
     for ep in range(1, args.episodes + 1):
         env.set_run_info(ep, args.episodes)
         env.set_training_end_time(time.time() + args.duration / args.speed_multiplier)
@@ -448,9 +495,9 @@ def run_training(args: argparse.Namespace) -> None:
             total_steps += 1
             if args.render and total_steps % args.render_interval == 0:
                 env.render()
-            if len(oni_buf) >= args.batch_size:
+            if len(oni_buf) >= args.batch_size and not freeze_oni:
                 oni.update(oni_buf, args.batch_size)
-            if len(nige_buf) >= args.batch_size:
+            if len(nige_buf) >= args.batch_size and not freeze_nige:
                 nige.update(nige_buf, args.batch_size)
             if args.checkpoint_freq > 0 and total_steps % args.checkpoint_freq == 0:
                 oni.save(oni_model_path)
@@ -464,6 +511,22 @@ def run_training(args: argparse.Namespace) -> None:
         )
         episode_rewards_oni.append(env.cumulative_rewards[0])
         episode_rewards_nige.append(env.cumulative_rewards[1])
+
+        if ep % args.eval_interval == 0:
+            wins_oni, wins_nige = evaluate_agents(oni, nige, args)
+            threshold = args.eval_episodes * 0.8
+            if wins_oni >= threshold:
+                freeze_oni = True
+                freeze_nige = False
+            elif wins_nige >= threshold:
+                freeze_nige = True
+                freeze_oni = False
+            else:
+                freeze_oni = False
+                freeze_nige = False
+            print(
+                f"Evaluation {ep}: oni {wins_oni} win(s), nige {wins_nige} win(s) -> freeze_oni={freeze_oni} freeze_nige={freeze_nige}"
+            )
 
     oni.save(oni_model_path)
     nige.save(nige_model_path)
