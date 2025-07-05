@@ -177,7 +177,7 @@ class CNNActor(nn.Module):
         action_dim: int,
         hidden_dim: int = 256,
         cnn_feature_dim: int = 64,
-        in_channels: int = 17,
+        in_channels: int = 15,
     ) -> None:
         super().__init__()
         self.encoder = CNNEncoder(in_channels, cnn_feature_dim)
@@ -244,7 +244,7 @@ class CNNCritic(nn.Module):
         action_dim: int,
         hidden_dim: int = 256,
         cnn_feature_dim: int = 64,
-        in_channels: int = 17,
+        in_channels: int = 15,
     ) -> None:
         super().__init__()
         self.encoder = CNNEncoder(in_channels, cnn_feature_dim)

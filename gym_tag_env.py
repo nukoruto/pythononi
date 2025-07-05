@@ -47,14 +47,12 @@ class MultiTagEnv(gym.Env):
         start_distance_range: tuple[int, int] | None = None,
         width_range: tuple[int, int] | None = None,
         height_range: tuple[int, int] | None = None,
-        fov_deg: float | None = 120.0,
-    ) -> None:
+) -> None:
         super().__init__()
         self.width = width
         self.height = height
         self.max_steps = max_steps
         self.extra_wall_prob = extra_wall_prob
-        self.fov_deg = fov_deg
         self.stage: StageMap | None = None
         self.oni: Agent | None = None
         self.nige: Agent | None = None
@@ -68,18 +66,14 @@ class MultiTagEnv(gym.Env):
                 -1.0,
                 -1.0,
                 0.0,
-                0.0,
                 -1.0,
                 -1.0,
-                0.0,
                 0.0,
             ],
             dtype=np.float32,
         )
         high = np.array(
             [
-                1.0,
-                1.0,
                 1.0,
                 1.0,
                 1.0,
@@ -116,16 +110,8 @@ class MultiTagEnv(gym.Env):
         self.prev_pred_distance: float = 0.0
 
     def _is_visible(self, agent: Agent, opponent: Agent) -> bool:
-        """Return True if ``opponent`` is within ``agent``'s FOV."""
-        if self.fov_deg is None or self.fov_deg >= 360:
-            return True
-        vec = opponent.pos - agent.pos
-        if vec.length_squared() == 0:
-            return True
-        facing = agent.facing if agent.facing.length_squared() > 0 else pygame.Vector2(1, 0)
-        cos_angle = max(-1.0, min(1.0, facing.normalize().dot(vec.normalize())))
-        angle = math.degrees(math.acos(cos_angle))
-        return angle <= self.fov_deg / 2
+        """Return True. Visibility is always assumed."""
+        return True
 
     def _make_obs(
         self,
@@ -146,18 +132,11 @@ class MultiTagEnv(gym.Env):
 
         collision = 1.0 if collided else 0.0
 
-        visible = self._is_visible(agent, opponent)
         direction, dist = self.stage.shortest_path_info(agent.pos, opponent.pos)
         max_dist = self.stage.width + self.stage.height
-        if visible:
-            dir_x = direction.x
-            dir_y = direction.y
-            dist_norm = min(dist / max_dist, 1.0)
-        else:
-            dir_x = 0.0
-            dir_y = 0.0
-            dist_norm = 1.0
-        capture_ease = 1.0 - dist_norm
+        dir_x = direction.x
+        dir_y = direction.y
+        dist_norm = min(dist / max_dist, 1.0)
 
         ov_scale = opponent.max_speed + MAX_SPEED_BOOST
         ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
@@ -166,8 +145,6 @@ class MultiTagEnv(gym.Env):
         remain_ratio = max(
             0.0, 1.0 - self.physical_step_count / float(self.max_steps)
         )
-
-        visible_flag = 1.0 if visible else 0.0
 
         return np.array(
             [
@@ -179,11 +156,9 @@ class MultiTagEnv(gym.Env):
                 dir_x,
                 dir_y,
                 dist_norm,
-                capture_ease,
                 ovx,
                 ovy,
                 remain_ratio,
-                visible_flag,
             ],
             dtype=np.float32,
         )
@@ -199,14 +174,13 @@ class MultiTagEnv(gym.Env):
         """Return multi-channel observation tensor for CNN input."""
         assert self.stage
         h, w = self.stage.height, self.stage.width
-        tensor = np.zeros((17, h, w), dtype=np.float32)
+        tensor = np.zeros((15, h, w), dtype=np.float32)
 
         # channel 0: walls
         tensor[0] = np.array(self.stage.grid, dtype=np.float32)
 
         ax, ay = int(agent.pos.x), int(agent.pos.y)
         ox, oy = int(opponent.pos.x), int(opponent.pos.y)
-        visible = self._is_visible(agent, opponent)
 
         # channel 1: agent position
         if 0 <= ax < w and 0 <= ay < h:
@@ -219,7 +193,7 @@ class MultiTagEnv(gym.Env):
         tensor[3].fill(vy)
 
         # channel 4: opponent position
-        if visible and 0 <= ox < w and 0 <= oy < h:
+        if 0 <= ox < w and 0 <= oy < h:
             tensor[4, oy, ox] = 1.0
 
         ov_scale = opponent.max_speed + MAX_SPEED_BOOST
@@ -241,17 +215,13 @@ class MultiTagEnv(gym.Env):
         tensor[10].fill(remain_ratio)
 
         max_range = self.stage.width + self.stage.height
-        if visible:
-            tensor[11].fill((opponent.pos.x - agent.pos.x) / max_range)
-            tensor[12].fill((opponent.pos.y - agent.pos.y) / max_range)
-        else:
-            tensor[11].fill(0.0)
-            tensor[12].fill(0.0)
+        tensor[11].fill((opponent.pos.x - agent.pos.x) / max_range)
+        tensor[12].fill((opponent.pos.y - agent.pos.y) / max_range)
 
         # channel 13: predicted opponent position after two steps
         pred_x = int(opponent.pos.x + opponent.vel.x * 2)
         pred_y = int(opponent.pos.y + opponent.vel.y * 2)
-        if visible and 0 <= pred_x < w and 0 <= pred_y < h:
+        if 0 <= pred_x < w and 0 <= pred_y < h:
             tensor[13, pred_y, pred_x] = 1.0
 
         # channel 14: movement history
@@ -260,20 +230,6 @@ class MultiTagEnv(gym.Env):
             hx_i, hy_i = int(hx), int(hy)
             if 0 <= hx_i < w and 0 <= hy_i < h:
                 tensor[14, hy_i, hx_i] = weight
-
-        # channel 15: capture ease
-        direction, dist = self.stage.shortest_path_info(agent.pos, opponent.pos)
-        max_range = self.stage.width + self.stage.height
-        if visible:
-            dist_norm = min(dist / max_range, 1.0)
-        else:
-            dist_norm = 1.0
-        capture_ease = 1.0 - dist_norm
-        tensor[15].fill(capture_ease)
-
-        # channel 16: visibility flag
-        tensor[16].fill(1.0 if visible else 0.0)
-
         return torch.tensor(tensor, dtype=torch.float32)
 
     def _get_obs(self, oni_collided: bool, nige_collided: bool):
