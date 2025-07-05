@@ -24,6 +24,8 @@ def parse_args():
     )
     parser.add_argument("--oni", type=str, default="oni_sac.pth", help="Path to save oni model")
     parser.add_argument("--nige", type=str, default="nige_sac.pth", help="Path to save nige model")
+    parser.add_argument("--load-oni", type=str, default=None, help="Path to pretrained oni model")
+    parser.add_argument("--load-nige", type=str, default=None, help="Path to pretrained nige model")
     parser.add_argument("--ckpt", "--checkpoint-freq", dest="checkpoint_freq", type=int, default=0, help="Save checkpoints every N steps")
     parser.add_argument("--draw", "--render", dest="render", action="store_true", help="Render environment during training")
     parser.add_argument("--draw-int", "--render-interval", dest="render_interval", type=int, default=1, help="Render every N steps")
@@ -379,6 +381,17 @@ class SACAgent:
             "log_alpha": self.log_alpha.detach().cpu(),
         }, path)
 
+    def load(self, path: str) -> None:
+        state = torch.load(path, map_location=self.device)
+        self.actor.load_state_dict(state["actor"])
+        self.q1.load_state_dict(state["q1"])
+        self.q2.load_state_dict(state["q2"])
+        if "log_alpha" in state:
+            self.log_alpha.data.copy_(state["log_alpha"].to(self.device))
+            self.alpha = self.log_alpha.exp().item()
+        self.q1_target.load_state_dict(self.q1.state_dict())
+        self.q2_target.load_state_dict(self.q2.state_dict())
+
 
 
 def evaluate_agents(
@@ -438,6 +451,10 @@ def run_training(args: argparse.Namespace) -> None:
     action_dim = env.action_space.shape[0]
     oni = SACAgent(obs_dim, action_dim, args, device, tensor_shape=tensor_shape if args.use_cnn else None)
     nige = SACAgent(obs_dim, action_dim, args, device, tensor_shape=tensor_shape if args.use_cnn else None)
+    if args.load_oni:
+        oni.load(args.load_oni)
+    if args.load_nige:
+        nige.load(args.load_nige)
     oni_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim, tensor_shape if args.use_cnn else None)
     nige_buf = ReplayBuffer(args.buffer_size, obs_dim, action_dim, tensor_shape if args.use_cnn else None)
 
