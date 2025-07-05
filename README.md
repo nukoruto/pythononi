@@ -91,6 +91,8 @@ py train_sac.py --eps 1000 --draw
 |------------|------|-----------|
 | `--oni <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
 | `--nige <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
+| `--load-oni <path>` | 既存の鬼モデルを読み込んで再学習 | - |
+| `--load-nige <path>` | 既存の逃げモデルを読み込んで再学習 | - |
 | `--ckpt <int>` | 指定間隔でチェックポイント保存 | 0 |
 | `--draw` | 学習中に画面を描画 | - |
 | `--draw-int <int>` | 描画間隔(ステップ数) | 1 |
@@ -107,7 +109,8 @@ py train_sac.py --eps 1000 --draw
 入力とする CNN ベースの Actor/Critic で学習を行います。
 
 `train_sac.py` で学習したモデルは、それぞれ `out/YYYYMMDD_HHMMSS/oni_sac.pth` と
-`out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
+`out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。既存モデルから再開したい場合
+は `--load-oni` と `--load-nige` にファイルを指定してください。
 
 ### `evaluate_sac.py`
 
