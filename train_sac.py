@@ -394,7 +394,7 @@ def evaluate_agents(
     nige_wins = 0
     for ep in range(args.eval_episodes):
         eval_env.set_run_info(ep + 1, args.eval_episodes)
-        eval_env.set_training_end_time(None)
+        eval_env.set_training_end_time(time.time() + args.duration / args.speed_multiplier)
         obs, info = eval_env.reset()
         oni_obs, nige_obs = obs
         oni_tensor = info["oni_tensor"]
