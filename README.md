@@ -134,6 +134,31 @@ CNNベースの Actor を読み込みます。
 平均報酬とその標準偏差が表示されるため、学習時と同様に性能を定量的に
 確認できます。
 
+## 設定ファイル (YAML)
+
+各スクリプトは `--config` で YAML ファイルを指定できます。デフォルトは
+`config/default.yaml` です。例として以下のような構成になります。
+
+```yaml
+stage:
+  width: 31
+  height: 21
+  extra_wall_prob: 0.15
+training:
+  episodes: 10
+  duration: 10
+  gamma: 0.99
+  lr: 0.0003
+  batch_size: 256
+```
+
+コマンドラインで指定しなかった項目は YAML の値が利用されます。
+実行例:
+
+```bash
+python3 train_sac.py --config config/default.yaml --eps 100
+```
+
 ## ライセンス
 
 このプロジェクトは [MIT License](LICENSE) のもとで公開されています。
