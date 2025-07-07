@@ -42,7 +42,13 @@ class Actor(torch.nn.Module):
 
     def act(self, obs: np.ndarray) -> np.ndarray:
         device = next(self.parameters()).device
-        obs_t = torch.tensor(obs, dtype=torch.float32, device=device)
+        obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device)
+        in_dim = self.net[0].in_features
+        if obs_t.shape[-1] > in_dim:
+            obs_t = obs_t[..., :in_dim]
+        elif obs_t.shape[-1] < in_dim:
+            pad = torch.zeros(in_dim - obs_t.shape[-1], device=device)
+            obs_t = torch.cat([obs_t, pad], dim=-1)
         with torch.no_grad():
             action, _ = self.sample(obs_t.unsqueeze(0))
         return action.squeeze(0).cpu().numpy()
