@@ -63,7 +63,8 @@ py train_sac.py --eps 1000 --draw
 `out/YYYYMMDD_HHMMSS/nige_sac.pth` に保存されます。
 
 同じディレクトリにはエピソードごとの報酬を記録した `rewards.csv` と、
-それを基に描画した学習曲線 `learning_curve.png` も生成されます。
+それを基に描画した学習曲線 `learning_curve.png`、
+ステップごとの詳細ログ `step_log.csv` も生成されます。
 これらを参照することで学習の進捗を確認できます。
 
 
@@ -88,8 +89,8 @@ py train_sac.py --eps 1000 --draw
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--oni <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
-| `--nige <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
+| `--oni, -O <path>` | 鬼モデルの保存/読み込みパス | `oni_sac.pth` |
+| `--nige, -N <path>` | 逃げモデルの保存/読み込みパス | `nige_sac.pth` |
 | `--load-oni <path>` | 既存の鬼モデルを読み込んで再学習 | - |
 | `--load-nige <path>` | 既存の逃げモデルを読み込んで再学習 | - |
 | `--ckpt <int>` | 指定間隔でチェックポイント保存 | 0 |
@@ -115,8 +116,8 @@ py train_sac.py --eps 1000 --draw
 
 | オプション | 説明 | デフォルト |
 |------------|------|-----------|
-| `--oni <path>` | 評価用鬼モデルのパス | `oni_sac.pth` |
-| `--nige <path>` | 評価用逃げモデルのパス | `nige_sac.pth` |
+| `--oni, -O <path>` | 評価用鬼モデルのパス | `oni_sac.pth` |
+| `--nige, -N <path>` | 評価用逃げモデルのパス | `nige_sac.pth` |
 | `--eps <int>` | 評価エピソード数 | 10 |
 | `--draw` | 描画を有効化 | - |
 | `--speed <float>` | 環境の処理速度倍率 | 1.0 |
