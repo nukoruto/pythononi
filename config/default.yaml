@@ -1,0 +1,12 @@
+stage:
+  width: 31
+  height: 21
+  extra_wall_prob: 0.15
+  width_range: null
+  height_range: null
+training:
+  episodes: 10
+  duration: 10
+  gamma: 0.99
+  lr: 0.0003
+  batch_size: 256

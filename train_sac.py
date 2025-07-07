@@ -2,6 +2,7 @@ import argparse
 import os
 from datetime import datetime
 from typing import Tuple
+from config_util import load_config
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,35 +20,30 @@ from gym_tag_env import MultiTagEnv
 
 
 def parse_args():
+    tmp = argparse.ArgumentParser(add_help=False)
+    tmp.add_argument("--config", "-C", type=str, default="config/default.yaml")
+    cfg_args, remaining = tmp.parse_known_args()
+    cfg = load_config(cfg_args.config)
+    train_cfg = cfg.get("training", {})
+
     parser = argparse.ArgumentParser(
-        description="Soft Actor-Critic training for MultiTagEnv"
+        description="Soft Actor-Critic training for MultiTagEnv",
+        parents=[tmp],
     )
-    parser.add_argument(
-        "--oni",
-        "-O",
-        type=str,
-        default="oni_sac.pth",
-        help="Path to save oni model",
-    )
-    parser.add_argument(
-        "--nige",
-        "-N",
-        type=str,
-        default="nige_sac.pth",
-        help="Path to save nige model",
-    )
+    parser.add_argument("--oni", "-O", type=str, default="oni_sac.pth", help="Path to save oni model")
+    parser.add_argument("--nige", "-N", type=str, default="nige_sac.pth", help="Path to save nige model")
     parser.add_argument("--load-oni", type=str, default=None, help="Path to pretrained oni model")
     parser.add_argument("--load-nige", type=str, default=None, help="Path to pretrained nige model")
     parser.add_argument("--ckpt", "--checkpoint-freq", dest="checkpoint_freq", type=int, default=0, help="Save checkpoints every N steps")
     parser.add_argument("--draw", "--render", dest="render", action="store_true", help="Render environment during training")
     parser.add_argument("--draw-int", "--render-interval", dest="render_interval", type=int, default=1, help="Render every N steps")
-    parser.add_argument("--time", "--duration", dest="duration", type=int, default=10, help="Episode length in seconds")
-    parser.add_argument("--eps", "--episodes", dest="episodes", type=int, default=10, help="Number of episodes")
+    parser.add_argument("--time", "--duration", dest="duration", type=int, default=train_cfg.get("duration", 10), help="Episode length in seconds")
+    parser.add_argument("--eps", "--episodes", dest="episodes", type=int, default=train_cfg.get("episodes", 10), help="Number of episodes")
     parser.add_argument("--speed", "--speed-multiplier", dest="speed_multiplier", type=float, default=1.0, help="Environment speed multiplier")
     parser.add_argument("--draw-speed", "--render-speed", dest="render_speed", type=float, default=1.0, help="Rendering speed multiplier")
-    parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
-    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate")
-    parser.add_argument("--batch", "--batch-size", dest="batch_size", type=int, default=256, help="Mini batch size")
+    parser.add_argument("--gamma", type=float, default=train_cfg.get("gamma", 0.99), help="Discount factor")
+    parser.add_argument("--lr", type=float, default=train_cfg.get("lr", 3e-4), help="Learning rate")
+    parser.add_argument("--batch", "--batch-size", dest="batch_size", type=int, default=train_cfg.get("batch_size", 256), help="Mini batch size")
     parser.add_argument("--buf", "--buffer-size", dest="buffer_size", type=int, default=10000, help="Replay buffer size")
     parser.add_argument("--tau", type=float, default=0.005, help="Target update coefficient")
     parser.add_argument("--train-every", dest="train_every", type=int, default=1, help="Update frequency in steps")
@@ -55,7 +51,7 @@ def parse_args():
     parser.add_argument("--cnn", "--use-cnn", dest="use_cnn", action="store_true", help="Use CNN-based models")
     parser.add_argument("--eval-int", "--eval-interval", dest="eval_interval", type=int, default=50, help="Evaluation interval in episodes")
     parser.add_argument("--eval-eps", "--eval-episodes", dest="eval_episodes", type=int, default=10, help="Number of evaluation episodes")
-    return parser.parse_args()
+    return parser.parse_args(remaining)
 
 
 def _create_env(args: argparse.Namespace) -> MultiTagEnv:
