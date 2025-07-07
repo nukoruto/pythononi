@@ -526,6 +526,11 @@ def make_obs(
     ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
     ovy = np.clip(opponent.vel.y / ov_scale, -1.0, 1.0)
 
+    pred_x = min(max(opponent.pos.x + opponent.vel.x * 2, 0), stage.width - 1)
+    pred_y = min(max(opponent.pos.y + opponent.vel.y * 2, 0), stage.height - 1)
+    pred_x = pred_x / stage.width * 2.0 - 1.0
+    pred_y = pred_y / stage.height * 2.0 - 1.0
+
     remain_ratio = max(0.0, 1.0 - step_count / float(max_steps))
 
     return np.array(
@@ -541,6 +546,8 @@ def make_obs(
             ovx,
             ovy,
             remain_ratio,
+            pred_x,
+            pred_y,
         ],
         dtype=np.float32,
     )

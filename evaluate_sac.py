@@ -99,6 +99,7 @@ def main():
     env = MultiTagEnv(
         speed_multiplier=args.speed_multiplier,
         render_speed=args.render_speed,
+        start_distance_range=(15, None),
     )
     obs_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
