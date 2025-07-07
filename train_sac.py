@@ -50,6 +50,7 @@ def parse_args():
     parser.add_argument("--batch", "--batch-size", dest="batch_size", type=int, default=256, help="Mini batch size")
     parser.add_argument("--buf", "--buffer-size", dest="buffer_size", type=int, default=10000, help="Replay buffer size")
     parser.add_argument("--tau", type=float, default=0.005, help="Target update coefficient")
+    parser.add_argument("--train-every", dest="train_every", type=int, default=1, help="Update frequency in steps")
     parser.add_argument("--gpu", "--g", dest="g", action="store_true", help="Use GPU if available")
     parser.add_argument("--cnn", "--use-cnn", dest="use_cnn", action="store_true", help="Use CNN-based models")
     parser.add_argument("--eval-int", "--eval-interval", dest="eval_interval", type=int, default=50, help="Evaluation interval in episodes")
@@ -61,6 +62,7 @@ def _create_env(args: argparse.Namespace) -> MultiTagEnv:
     return MultiTagEnv(
         speed_multiplier=args.speed_multiplier,
         render_speed=args.render_speed,
+        start_distance_range=(15, None),
     )
 
 
@@ -534,9 +536,17 @@ def run_training(args: argparse.Namespace) -> None:
             total_steps += 1
             if args.render and total_steps % args.render_interval == 0:
                 env.render()
-            if len(oni_buf) >= args.batch_size and not freeze_oni:
+            if (
+                len(oni_buf) >= args.batch_size
+                and not freeze_oni
+                and total_steps % args.train_every == 0
+            ):
                 oni.update(oni_buf, args.batch_size)
-            if len(nige_buf) >= args.batch_size and not freeze_nige:
+            if (
+                len(nige_buf) >= args.batch_size
+                and not freeze_nige
+                and total_steps % args.train_every == 0
+            ):
                 nige.update(nige_buf, args.batch_size)
             if args.checkpoint_freq > 0 and total_steps % args.checkpoint_freq == 0:
                 oni.save(oni_model_path)

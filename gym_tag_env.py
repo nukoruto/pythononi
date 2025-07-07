@@ -44,7 +44,7 @@ class MultiTagEnv(gym.Env):
         extra_wall_prob: float = 0.1,
         speed_multiplier: float = 1.0,
         render_speed: float = 1.0,
-        start_distance_range: tuple[int, int] | None = None,
+        start_distance_range: tuple[int, int] | None = (15, None),
         width_range: tuple[int, int] | None = None,
         height_range: tuple[int, int] | None = None,
 ) -> None:
@@ -69,11 +69,15 @@ class MultiTagEnv(gym.Env):
                 -1.0,
                 -1.0,
                 0.0,
+                -1.0,
+                -1.0,
             ],
             dtype=np.float32,
         )
         high = np.array(
             [
+                1.0,
+                1.0,
                 1.0,
                 1.0,
                 1.0,
@@ -142,6 +146,11 @@ class MultiTagEnv(gym.Env):
         ovx = np.clip(opponent.vel.x / ov_scale, -1.0, 1.0)
         ovy = np.clip(opponent.vel.y / ov_scale, -1.0, 1.0)
 
+        pred_x = min(max(opponent.pos.x + opponent.vel.x * 2, 0), self.stage.width - 1)
+        pred_y = min(max(opponent.pos.y + opponent.vel.y * 2, 0), self.stage.height - 1)
+        pred_x = pred_x / self.stage.width * 2.0 - 1.0
+        pred_y = pred_y / self.stage.height * 2.0 - 1.0
+
         remain_ratio = max(
             0.0, 1.0 - self.physical_step_count / float(self.max_steps)
         )
@@ -159,6 +168,8 @@ class MultiTagEnv(gym.Env):
                 ovx,
                 ovy,
                 remain_ratio,
+                pred_x,
+                pred_y,
             ],
             dtype=np.float32,
         )
@@ -432,6 +443,11 @@ class MultiTagEnv(gym.Env):
                 nige_reward = 0.0
             nige_reward += 0.01 * (-dist_delta)
             nige_reward += -0.02 * nige_align + 0.002 * updates
+
+        if self.oni.vel.length_squared() < 1e-4:
+            oni_reward -= 0.005 * updates
+        if self.nige.vel.length_squared() < 1e-4:
+            nige_reward -= 0.005 * updates
 
         # penalty for wall collisions grows exponentially with the number of
         # hits in this step
