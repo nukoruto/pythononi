@@ -427,23 +427,25 @@ class Agent:
             self.speed_boost = 0.0
         radius = self.radius / CELL_SIZE
 
-        # X 軸方向の移動を先に判定し、壁に衝突する場合はその軸のみ停止する
-        new_x = self.pos.x + self.vel.x
-        if stage.collides_circle(new_x, self.pos.y, radius):
-            collided = True
-            self.vel.x = 0
-            self.speed_boost = 0.0
+        # 斜め方向の壁衝突時に滑るよう、まず全体の移動を試みる
+        new_pos = self.pos + self.vel
+        if not stage.collides_circle(new_pos.x, new_pos.y, radius):
+            self.pos = new_pos
         else:
-            self.pos.x = new_x
+            collided = True
+            pos_x = pygame.Vector2(self.pos.x + self.vel.x, self.pos.y)
+            pos_y = pygame.Vector2(self.pos.x, self.pos.y + self.vel.y)
+            if not stage.collides_circle(pos_x.x, pos_x.y, radius):
+                self.pos.x = pos_x.x
+                self.vel.y = 0
+            elif not stage.collides_circle(pos_y.x, pos_y.y, radius):
+                self.pos.y = pos_y.y
+                self.vel.x = 0
+            else:
+                self.vel = pygame.Vector2(0, 0)
+            self.speed_boost = 0.0
 
-        # Y 軸方向も同様に処理
-        new_y = self.pos.y + self.vel.y
-        if stage.collides_circle(self.pos.x, new_y, radius):
-            collided = True
-            self.vel.y = 0
-            self.speed_boost = 0.0
-        else:
-            self.pos.y = new_y
+        # 速度が残っていても壁に当たったらブーストはリセット
 
         return collided
 
@@ -659,12 +661,14 @@ def main():
     )
     parser.add_argument(
         "--oni",
+        "-O",
         type=str,
         default=None,
         help="鬼側モデルのパス（指定すると逃げはプレイヤー操作）",
     )
     parser.add_argument(
         "--nige",
+        "-N",
         type=str,
         default=None,
         help="逃げ側モデルのパス（指定すると鬼はプレイヤー操作）",
