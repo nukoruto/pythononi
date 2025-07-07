@@ -22,8 +22,20 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Soft Actor-Critic training for MultiTagEnv"
     )
-    parser.add_argument("--oni", type=str, default="oni_sac.pth", help="Path to save oni model")
-    parser.add_argument("--nige", type=str, default="nige_sac.pth", help="Path to save nige model")
+    parser.add_argument(
+        "--oni",
+        "-O",
+        type=str,
+        default="oni_sac.pth",
+        help="Path to save oni model",
+    )
+    parser.add_argument(
+        "--nige",
+        "-N",
+        type=str,
+        default="nige_sac.pth",
+        help="Path to save nige model",
+    )
     parser.add_argument("--load-oni", type=str, default=None, help="Path to pretrained oni model")
     parser.add_argument("--load-nige", type=str, default=None, help="Path to pretrained nige model")
     parser.add_argument("--ckpt", "--checkpoint-freq", dest="checkpoint_freq", type=int, default=0, help="Save checkpoints every N steps")
@@ -460,6 +472,7 @@ def run_training(args: argparse.Namespace) -> None:
 
     episode_rewards_oni: list[float] = []
     episode_rewards_nige: list[float] = []
+    step_logs: list[dict] = []
 
     output_dir = _timestamp_output_dir("out")
     oni_model_path = os.path.join(output_dir, args.oni)
@@ -486,6 +499,15 @@ def run_training(args: argparse.Namespace) -> None:
             (next_oni_obs, next_nige_obs), (r_o, r_n), terminated, truncated, info = env.step((oni_action, nige_action))
             next_oni_tensor = info["oni_tensor"]
             next_nige_tensor = info["nige_tensor"]
+            step_logs.append(
+                {
+                    "episode": ep,
+                    "t": env.physical_step_count,
+                    "oni_r": r_o,
+                    "nige_r": r_n,
+                    "dist": info.get("distance", 0.0),
+                }
+            )
             done = terminated or truncated
             oni_buf.add(
                 oni_obs,
@@ -548,6 +570,11 @@ def run_training(args: argparse.Namespace) -> None:
     oni.save(oni_model_path)
     nige.save(nige_model_path)
     env.close()
+
+    if step_logs:
+        pd.DataFrame(step_logs).to_csv(
+            os.path.join(output_dir, "step_log.csv"), index=False
+        )
 
     rewards_df = pd.DataFrame({
         "episode": range(1, args.episodes + 1),

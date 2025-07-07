@@ -14,8 +14,20 @@ from gym_tag_env import MultiTagEnv
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate SAC trained agents")
-    parser.add_argument("--oni", type=str, default="oni_sac.pth", help="Oni model path")
-    parser.add_argument("--nige", type=str, default="nige_sac.pth", help="Nige model path")
+    parser.add_argument(
+        "--oni",
+        "-O",
+        type=str,
+        default="oni_sac.pth",
+        help="Oni model path",
+    )
+    parser.add_argument(
+        "--nige",
+        "-N",
+        type=str,
+        default="nige_sac.pth",
+        help="Nige model path",
+    )
     parser.add_argument("--eps", "--episodes", dest="episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--draw", "--render", dest="render", action="store_true", help="Render environment")
     parser.add_argument("--speed", "--speed-multiplier", dest="speed_multiplier", type=float, default=1.0, help="Environment speed multiplier")
@@ -55,12 +67,13 @@ def run_episode(
     done = False
     total_rewards = [0.0, 0.0]
     while not done:
-        if use_cnn:
-            oni_action = oni_actor.act(oni_obs, oni_tensor)
-            nige_action = nige_actor.act(nige_obs, nige_tensor)
-        else:
-            oni_action = oni_actor.act(oni_obs)
-            nige_action = nige_actor.act(nige_obs)
+        with torch.no_grad():
+            if use_cnn:
+                oni_action = oni_actor.act(oni_obs, oni_tensor)
+                nige_action = nige_actor.act(nige_obs, nige_tensor)
+            else:
+                oni_action = oni_actor.act(oni_obs)
+                nige_action = nige_actor.act(nige_obs)
         (oni_obs, nige_obs), (r_on, r_ni), terminated, truncated, info = env.step((oni_action, nige_action))
         oni_tensor = info["oni_tensor"]
         nige_tensor = info["nige_tensor"]

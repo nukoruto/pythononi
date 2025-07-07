@@ -443,6 +443,10 @@ class MultiTagEnv(gym.Env):
         # reward is computed for ``updates`` physical steps so that the
         # total reward does not shrink when ``speed_multiplier`` is large
 
+        # 報酬を [-1, 1] の範囲に収める
+        oni_reward = float(max(-1.0, min(oni_reward, 1.0)))
+        nige_reward = float(max(-1.0, min(nige_reward, 1.0)))
+
         self.last_rewards = (oni_reward, nige_reward)
         self.cumulative_rewards[0] += oni_reward
         self.cumulative_rewards[1] += nige_reward
@@ -450,8 +454,15 @@ class MultiTagEnv(gym.Env):
         info = {
             "oni_tensor": oni_tensor,
             "nige_tensor": nige_tensor,
+            "distance": new_dist,
         }
-        return (oni_obs, nige_obs), (oni_reward, nige_reward), terminated, truncated, info
+        return (
+            (oni_obs, nige_obs),
+            (oni_reward, nige_reward),
+            terminated,
+            truncated,
+            info,
+        )
 
     def render(self) -> None:
         if self.screen is None:
