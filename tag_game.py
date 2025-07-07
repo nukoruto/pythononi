@@ -426,27 +426,39 @@ class Agent:
         else:
             self.vel = pygame.Vector2(0, 0)
             self.speed_boost = 0.0
+
         radius = self.radius / CELL_SIZE
 
-        # 斜め方向の壁衝突時に滑るよう、まず全体の移動を試みる
-        new_pos = self.pos + self.vel
-        if not stage.collides_circle(new_pos.x, new_pos.y, radius):
-            self.pos = new_pos
-        else:
-            collided = True
-            pos_x = pygame.Vector2(self.pos.x + self.vel.x, self.pos.y)
-            pos_y = pygame.Vector2(self.pos.x, self.pos.y + self.vel.y)
-            if not stage.collides_circle(pos_x.x, pos_x.y, radius):
-                self.pos.x = pos_x.x
-                self.vel.y = 0
-            elif not stage.collides_circle(pos_y.x, pos_y.y, radius):
-                self.pos.y = pos_y.y
-                self.vel.x = 0
-            else:
-                self.vel = pygame.Vector2(0, 0)
-            self.speed_boost = 0.0
+        # --- 角でひっかからないよう細かく移動を分割して判定 ---
+        move_x = self.vel.x
+        move_y = self.vel.y
+        step_size = 0.05
+        steps = int(max(abs(move_x), abs(move_y)) / step_size) + 1
+        step_x = move_x / steps
+        step_y = move_y / steps
 
-        # 速度が残っていても壁に当たったらブーストはリセット
+        for _ in range(steps):
+            next_x = self.pos.x + step_x
+            if not stage.collides_circle(next_x, self.pos.y, radius):
+                self.pos.x = next_x
+            else:
+                collided = True
+                self.vel.x = 0
+                step_x = 0.0
+
+            next_y = self.pos.y + step_y
+            if not stage.collides_circle(self.pos.x, next_y, radius):
+                self.pos.y = next_y
+            else:
+                collided = True
+                self.vel.y = 0
+                step_y = 0.0
+
+            if step_x == 0.0 and step_y == 0.0:
+                break
+
+        if collided:
+            self.speed_boost = 0.0
 
         return collided
 
