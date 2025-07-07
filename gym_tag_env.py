@@ -11,6 +11,7 @@ import pygame
 import torch
 
 from stage_generator import generate_stage
+from config_util import load_config
 from tag_game import (
     StageMap,
     Agent,
@@ -21,6 +22,12 @@ from tag_game import (
     ONI_MAX_SPEED,
     ONI_ACCEL_STEPS,
 )
+
+
+def load_stage_config(config_path: str) -> dict:
+    """YAMLからstage設定を読み込む"""
+    cfg = load_config(config_path)
+    return cfg.get("stage", {})
 
 INFO_PANEL_HEIGHT = 40
 

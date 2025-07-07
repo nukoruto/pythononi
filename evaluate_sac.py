@@ -2,6 +2,7 @@ import argparse
 import os
 from datetime import datetime
 from typing import List, Tuple
+from config_util import load_config
 
 import numpy as np
 import pandas as pd
@@ -13,7 +14,13 @@ from gym_tag_env import MultiTagEnv
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate SAC trained agents")
+    tmp = argparse.ArgumentParser(add_help=False)
+    tmp.add_argument("--config", "-C", type=str, default="config/default.yaml")
+    cfg_args, remaining = tmp.parse_known_args()
+    cfg = load_config(cfg_args.config)
+    train_cfg = cfg.get("training", {})
+
+    parser = argparse.ArgumentParser(description="Evaluate SAC trained agents", parents=[tmp])
     parser.add_argument(
         "--oni",
         "-O",
@@ -28,7 +35,7 @@ def parse_args():
         default="nige_sac.pth",
         help="Nige model path",
     )
-    parser.add_argument("--eps", "--episodes", dest="episodes", type=int, default=10, help="Number of episodes")
+    parser.add_argument("--eps", "--episodes", dest="episodes", type=int, default=train_cfg.get("episodes", 10), help="Number of episodes")
     parser.add_argument("--draw", "--render", dest="render", action="store_true", help="Render environment")
     parser.add_argument("--speed", "--speed-multiplier", dest="speed_multiplier", type=float, default=1.0, help="Environment speed multiplier")
     parser.add_argument("--draw-speed", "--render-speed", dest="render_speed", type=float, default=1.0, help="Rendering speed multiplier")
@@ -42,7 +49,7 @@ def parse_args():
         help="Base directory to store evaluation logs",
     )
     parser.add_argument("--cnn", "--use-cnn", dest="use_cnn", action="store_true", help="Use CNN-based models")
-    return parser.parse_args()
+    return parser.parse_args(remaining)
 
 
 def _timestamp_output_dir(base_dir: str) -> str:
