@@ -749,7 +749,11 @@ def main():
         sd = state["actor"] if "actor" in state else state
         is_cnn = any(k.startswith("encoder.") for k in sd.keys())
         cls = CNNActor if is_cnn else Actor
-        obs_dim = 11 if is_cnn else 3
+        if is_cnn:
+            feature_dim = sd["encoder.fc.weight"].shape[0]
+            obs_dim = sd["net.0.weight"].shape[1] - feature_dim
+        else:
+            obs_dim = sd["net.0.weight"].shape[1]
         actor = cls(obs_dim, 2).to(device)
         actor.load_state_dict(sd)
         actor.eval()
