@@ -2,6 +2,7 @@
 """
 from typing import List, Tuple, Iterable
 import numpy as np
+from config_util import load_config
 
 Cell = int
 Stage = List[List[Cell]]  # 0: path, 1: wall
@@ -136,18 +137,24 @@ def print_stage(stage: Stage) -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate and print a random stage")
-    parser.add_argument("--w", "--width", dest="width", type=int, default=31, help="Stage width (odd number)")
-    parser.add_argument("--h", "--height", dest="height", type=int, default=21, help="Stage height (odd number)")
+    tmp = argparse.ArgumentParser(add_help=False)
+    tmp.add_argument("--config", "-C", type=str, default="config/default.yaml")
+    cfg_args, remaining = tmp.parse_known_args()
+    cfg = load_config(cfg_args.config)
+    stage_cfg = cfg.get("stage", {})
+
+    parser = argparse.ArgumentParser(description="Generate and print a random stage", parents=[tmp])
+    parser.add_argument("--w", "--width", dest="width", type=int, default=stage_cfg.get("width", 31), help="Stage width (odd number)")
+    parser.add_argument("--h", "--height", dest="height", type=int, default=stage_cfg.get("height", 21), help="Stage height (odd number)")
     parser.add_argument(
         "--extra-wall",
         "--extra-wall-prob",
         dest="extra_wall_prob",
         type=float,
-        default=0.15,
+        default=stage_cfg.get("extra_wall_prob", 0.15),
         help="Probability of adding extra walls after maze generation",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(remaining)
 
     stage = generate_stage(
         args.width,

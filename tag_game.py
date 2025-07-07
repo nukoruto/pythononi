@@ -5,6 +5,7 @@ import argparse
 import time
 
 import pygame
+from config_util import load_config
 
 from stage_generator import generate_stage, Stage
 import numpy as np
@@ -635,13 +636,20 @@ def get_state_cnn(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="2D鬼ごっこデモ")
+    tmp = argparse.ArgumentParser(add_help=False)
+    tmp.add_argument("--config", "-C", type=str, default="config/default.yaml")
+    cfg_args, remaining = tmp.parse_known_args()
+    cfg = load_config(cfg_args.config)
+    stage_cfg = cfg.get("stage", {})
+    training_cfg = cfg.get("training", {})
+
+    parser = argparse.ArgumentParser(description="2D鬼ごっこデモ", parents=[tmp])
     parser.add_argument(
         "--time",
         "--duration",
         dest="duration",
         type=float,
-        default=DEFAULT_DURATION,
+        default=training_cfg.get("duration", DEFAULT_DURATION),
         help="ゲームの制限時間（秒）",
     )
     parser.add_argument(
@@ -655,7 +663,7 @@ def main():
         "--width-range",
         dest="width_range",
         type=str,
-        default=None,
+        default=None if stage_cfg.get("width_range") is None else f"{stage_cfg['width_range'][0]},{stage_cfg['width_range'][1]}",
         help="ステージ幅の最小値と最大値をカンマ区切りで指定",
     )
     parser.add_argument(
@@ -663,7 +671,7 @@ def main():
         "--height-range",
         dest="height_range",
         type=str,
-        default=None,
+        default=None if stage_cfg.get("height_range") is None else f"{stage_cfg['height_range'][0]},{stage_cfg['height_range'][1]}",
         help="ステージ高さの最小値と最大値をカンマ区切りで指定",
     )
     parser.add_argument(
